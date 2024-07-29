@@ -19,10 +19,18 @@ async function checkAndSwitchTabs() {
   }
 }
 
-async function switchToTab(tabName) {
-  const tabs = await chrome.tabs.query({});
-  const tab = tabs.find(t => t.title.includes(tabName));
-  if (tab) {
-    await chrome.tabs.update(tab.id, {active: true});
+async function switchToTab(tabInfo) {
+  if (tabInfo.id) {
+    const tab = await chrome.tabs.get(parseInt(tabInfo.id)).catch(() => null);
+    if (tab) {
+      await chrome.tabs.update(tab.id, {active: true});
+    } else {
+      // If the tab with the saved ID is not found, fall back to searching by title
+      const tabs = await chrome.tabs.query({});
+      const matchingTab = tabs.find(t => t.title.includes(tabInfo.title));
+      if (matchingTab) {
+        await chrome.tabs.update(matchingTab.id, {active: true});
+      }
+    }
   }
 }
