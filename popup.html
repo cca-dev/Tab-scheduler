@@ -4,7 +4,7 @@
   <title>Kiosk Tab Scheduler</title>
   <style>
     body { width: 300px; padding: 10px; }
-    select, input { margin: 5px 0; }
+    select, input { margin: 5px 0; width: 100%; }
   </style>
 </head>
 <body>
@@ -19,7 +19,7 @@
     <option value="sunday">Sunday</option>
   </select>
   <input type="time" id="time">
-  <input type="text" id="tabName" placeholder="Tab name">
+  <select id="tabSelect"></select>
   <button id="addSchedule">Add to Schedule</button>
   <div id="currentSchedule"></div>
   <script src="popup.js"></script>
