@@ -8,7 +8,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 async function checkAndSwitchTabs() {
   const result = await chrome.storage.sync.get(['schedule']);
-  const schedule = result.schedule || { recurring: {}, onetime: {} };
+  let schedule = result.schedule || {};
+  if (!schedule.recurring) schedule.recurring = {};
+  if (!schedule.onetime) schedule.onetime = {};
+
   const now = new Date();
   const day = now.toLocaleString('en-us', {weekday: 'long'}).toLowerCase();
   const date = now.toISOString().split('T')[0]; // YYYY-MM-DD format
@@ -34,18 +37,26 @@ async function checkAndSwitchTabs() {
   }
 }
 
+// Also, let's add some console logging to help with debugging
 async function switchToTab(tabInfo) {
+  console.log('Attempting to switch to tab:', tabInfo);
   if (tabInfo.id) {
     const tab = await chrome.tabs.get(parseInt(tabInfo.id)).catch(() => null);
     if (tab) {
+      console.log('Switching to tab with ID:', tab.id);
       await chrome.tabs.update(tab.id, {active: true});
     } else {
-      // If the tab with the saved ID is not found, fall back to searching by title
+      console.log('Tab not found by ID, searching by title:', tabInfo.title);
       const tabs = await chrome.tabs.query({});
       const matchingTab = tabs.find(t => t.title.includes(tabInfo.title));
       if (matchingTab) {
+        console.log('Switching to tab with title:', matchingTab.title);
         await chrome.tabs.update(matchingTab.id, {active: true});
+      } else {
+        console.log('No matching tab found');
       }
     }
+  } else {
+    console.log('No tab ID provided');
   }
 }

@@ -36,7 +36,9 @@ async function addScheduleItem() {
   const selectedTabTitle = tabSelect.options[tabSelect.selectedIndex].text;
 
   const result = await chrome.storage.sync.get(['schedule']);
-  let schedule = result.schedule || { recurring: {}, onetime: {} };
+  let schedule = result.schedule || {};
+  if (!schedule.recurring) schedule.recurring = {};
+  if (!schedule.onetime) schedule.onetime = {};
 
   const scheduleItem = {
     id: selectedTabId,
