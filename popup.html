@@ -3,12 +3,17 @@
 <head>
   <title>Kiosk Tab Scheduler</title>
   <style>
-    body { width: 300px; padding: 10px; }
+    body { width: 350px; padding: 10px; }
     select, input { margin: 5px 0; width: 100%; }
+    #dateInput { display: none; }
   </style>
 </head>
 <body>
   <h2>Schedule Tab Switches</h2>
+  <select id="scheduleType">
+    <option value="recurring">Recurring</option>
+    <option value="onetime">One-time</option>
+  </select>
   <select id="day">
     <option value="monday">Monday</option>
     <option value="tuesday">Tuesday</option>
@@ -18,6 +23,7 @@
     <option value="saturday">Saturday</option>
     <option value="sunday">Sunday</option>
   </select>
+  <input type="date" id="dateInput">
   <input type="time" id="time">
   <select id="tabSelect"></select>
   <button id="addSchedule">Add to Schedule</button>

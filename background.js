@@ -8,14 +8,29 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 async function checkAndSwitchTabs() {
   const result = await chrome.storage.sync.get(['schedule']);
-  const schedule = result.schedule || {};
+  const schedule = result.schedule || { recurring: {}, onetime: {} };
   const now = new Date();
   const day = now.toLocaleString('en-us', {weekday: 'long'}).toLowerCase();
+  const date = now.toISOString().split('T')[0]; // YYYY-MM-DD format
   const time = now.toTimeString().slice(0, 5); // HH:MM format
 
-  if (schedule[day] && schedule[day][time]) {
-    const tabToSwitch = schedule[day][time];
-    switchToTab(tabToSwitch);
+  // Check recurring schedule
+  if (schedule.recurring[day]) {
+    const matchingItem = schedule.recurring[day].find(item => item.time === time);
+    if (matchingItem) {
+      switchToTab(matchingItem);
+    }
+  }
+
+  // Check one-time schedule
+  if (schedule.onetime[date]) {
+    const matchingItem = schedule.onetime[date].find(item => item.time === time);
+    if (matchingItem) {
+      switchToTab(matchingItem);
+      // Remove the one-time event after it's triggered
+      schedule.onetime[date] = schedule.onetime[date].filter(item => item.time !== time);
+      await chrome.storage.sync.set({schedule: schedule});
+    }
   }
 }
 
