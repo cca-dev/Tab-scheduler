@@ -79,7 +79,7 @@ async function updateScheduleDisplay() {
   const schedule = result.schedule || { recurring: {}, onetime: {} };
   let displayHtml = '<h3>Current Schedule:</h3>';
 
-  displayHtml += '<h4>Recurring Events:</h4>';
+  displayHtml += '<h4>Recurring Events:</h4><br><hr>';
   for (let day in schedule.recurring) {
     displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
     schedule.recurring[day].forEach((item, index) => {
@@ -90,7 +90,7 @@ async function updateScheduleDisplay() {
     });
   }
 
-  displayHtml += '<h4>One-time Events:</h4>';
+  displayHtml += '<h4>One-time Events:</h4><br><hr>';
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const sortedDates = Object.keys(schedule.onetime).sort();
