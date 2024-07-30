@@ -82,8 +82,11 @@ async function updateScheduleDisplay() {
   displayHtml += '<h4>Recurring Events:</h4>';
   for (let day in schedule.recurring) {
     displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
-    schedule.recurring[day].forEach(item => {
-      displayHtml += `${item.time} - ${item.title}<br>`;
+    schedule.recurring[day].forEach((item, index) => {
+      displayHtml += `<div class="event-item">
+        <span>${item.time} - ${item.title}</span>
+        <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${index}">❌</span>
+      </div>`;
     });
   }
 
@@ -95,11 +98,53 @@ async function updateScheduleDisplay() {
   for (let date of sortedDates) {
     if (new Date(date) >= today) {
       displayHtml += `<strong>${date}:</strong><br>`;
-      schedule.onetime[date].forEach(item => {
-        displayHtml += `${item.time} - ${item.title}<br>`;
+      schedule.onetime[date].forEach((item, index) => {
+        displayHtml += `<div class="event-item">
+          <span>${item.time} - ${item.title}</span>
+          <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${index}">❌</span>
+        </div>`;
       });
     }
   }
 
   document.getElementById('currentSchedule').innerHTML = displayHtml;
+  addDeleteEventListeners();
+}
+
+function addDeleteEventListeners() {
+  const deleteButtons = document.querySelectorAll('.delete-btn');
+  deleteButtons.forEach(button => {
+    button.addEventListener('click', confirmDelete);
+  });
+}
+
+function confirmDelete(event) {
+  const type = event.target.dataset.type;
+  const index = event.target.dataset.index;
+  const day = event.target.dataset.day;
+  const date = event.target.dataset.date;
+
+  if (confirm('Are you sure you want to delete this event?')) {
+    deleteEvent(type, index, day, date);
+  }
+}
+
+async function deleteEvent(type, index, day, date) {
+  const result = await chrome.storage.sync.get(['schedule']);
+  let schedule = result.schedule || { recurring: {}, onetime: {} };
+
+  if (type === 'recurring') {
+    schedule.recurring[day].splice(index, 1);
+    if (schedule.recurring[day].length === 0) {
+      delete schedule.recurring[day];
+    }
+  } else if (type === 'onetime') {
+    schedule.onetime[date].splice(index, 1);
+    if (schedule.onetime[date].length === 0) {
+      delete schedule.onetime[date];
+    }
+  }
+
+  await chrome.storage.sync.set({schedule: schedule});
+  updateScheduleDisplay();
 }
