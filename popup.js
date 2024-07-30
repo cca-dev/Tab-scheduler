@@ -84,12 +84,10 @@ async function updateScheduleDisplay() {
     displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
     schedule.recurring[day].forEach((item, index) => {
       displayHtml += `<div class="event-item">
-        <span>
-          <input type="checkbox" class="reload-checkbox" 
-                 ${item.reload ? 'checked' : ''}
-                 data-type="recurring" data-day="${day}" data-index="${index}">
-          ${item.time} - ${item.title}
-        </span>
+        <input type="checkbox" class="reload-checkbox" 
+               ${item.reload ? 'checked' : ''}
+               data-type="recurring" data-day="${day}" data-index="${index}">
+        <span>${item.time} - ${item.title}</span>
         <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${index}">&times;</span>
       </div>`;
     });
@@ -105,12 +103,10 @@ async function updateScheduleDisplay() {
       displayHtml += `<strong>${date}:</strong><br>`;
       schedule.onetime[date].forEach((item, index) => {
         displayHtml += `<div class="event-item">
-          <span>
-            <input type="checkbox" class="reload-checkbox" 
-                   ${item.reload ? 'checked' : ''}
-                   data-type="onetime" data-date="${date}" data-index="${index}">
-            ${item.time} - ${item.title}
-          </span>
+          <input type="checkbox" class="reload-checkbox" 
+                 ${item.reload ? 'checked' : ''}
+                 data-type="onetime" data-date="${date}" data-index="${index}">
+          <span>${item.time} - ${item.title}</span>
           <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${index}">&times;</span>
         </div>`;
       });

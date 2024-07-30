@@ -3,14 +3,50 @@
 <head>
   <title>Kiosk Tab Scheduler</title>
   <style>
-    body { width: 350px; padding: 10px; font-family: Arial, sans-serif; }
-    select, input { margin: 5px 0; width: 100%; }
-    #dateInput { display: none; }
-    .delete-btn { cursor: pointer; color: red; margin-left: 5px; }
-    .event-item { display: flex; justify-content: space-between; align-items: center; }
-    .reload-checkbox { margin-right: 5px; }
+    body {
+      width: 350px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+
+    select,
+    input {
+      margin: 5px 0;
+      width: 100%;
+    }
+
+    #dateInput {
+      display: none;
+    }
+
+    .delete-btn {
+      cursor: pointer;
+      color: red;
+      margin-left: 5px;
+    }
+
+    .reload-checkbox {
+      margin-right: 5px;
+    }
+
+    .event-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    .event-item input[type="checkbox"] {
+      margin-right: 5px;
+    }
+
+    .event-item .delete-btn {
+      margin-left: auto;
+      cursor: pointer;
+    }
   </style>
 </head>
+
 <body>
   <h2>Schedule Tab Switches</h2>
   <select id="scheduleType">
@@ -33,4 +69,5 @@
   <div id="currentSchedule"></div>
   <script src="popup.js"></script>
 </body>
+
 </html>
