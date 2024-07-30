@@ -8,11 +8,17 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getFavicon") {
-    chrome.tabs.get(request.tabId, (tab) => {
+    const tabId = parseInt(request.tabId);
+    if (isNaN(tabId)) {
+      sendResponse({favIconUrl: null});
+      return true;
+    }
+    chrome.tabs.get(tabId, (tab) => {
       if (chrome.runtime.lastError) {
+        console.log(chrome.runtime.lastError.message);
         sendResponse({favIconUrl: null});
       } else {
-        sendResponse({favIconUrl: tab.favIconUrl});
+        sendResponse({favIconUrl: tab.favIconUrl || null});
       }
     });
     return true;  // Indicates we will send a response asynchronously

@@ -24,11 +24,10 @@ async function populateTabDropdown() {
   const tabs = await chrome.tabs.query({});
   const tabSelect = document.getElementById('tabSelect');
   tabSelect.innerHTML = '';
-  tabs.forEach((tab, index) => {
+  tabs.forEach((tab) => {
     const option = document.createElement('option');
     option.value = tab.id;
     option.textContent = tab.title.length > 50 ? tab.title.substring(0, 47) + '...' : tab.title;
-    option.dataset.url = tab.url; // Add this line
     tabSelect.appendChild(option);
   });
 }
@@ -43,45 +42,15 @@ function setupEventListeners() {
   document.getElementById('addSchedule').addEventListener('click', addScheduleItem);
 }
 
-async function addScheduleItem() {
-  const scheduleType = document.getElementById('scheduleType').value;
-  const day = document.getElementById('day').value;
-  const date = document.getElementById('dateInput').value;
-  const time = document.getElementById('time').value;
-  const tabSelect = document.getElementById('tabSelect');
-  const selectedTabId = tabSelect.value;
-  const selectedTabTitle = tabSelect.options[tabSelect.selectedIndex].text;
-  const selectedTabUrl = tabSelect.options[tabSelect.selectedIndex].dataset.url;
-
-  const result = await chrome.storage.sync.get(['schedule']);
-  let schedule = result.schedule || {};
-  if (!schedule.recurring) schedule.recurring = {};
-  if (!schedule.onetime) schedule.onetime = {};
-
-  const scheduleItem = {
-    id: selectedTabId,
-    title: selectedTabTitle,
-    time: time,
-    url: selectedTabUrl,
-    reload: false // Initialize reload as false
-  };
-
-  if (scheduleType === 'recurring') {
-    if (!schedule.recurring[day]) schedule.recurring[day] = [];
-    schedule.recurring[day].push(scheduleItem);
-  } else {
-    if (!schedule.onetime[date]) schedule.onetime[date] = [];
-    schedule.onetime[date].push(scheduleItem);
-  }
-
-  await chrome.storage.sync.set({schedule: schedule});
-  updateScheduleDisplay();
-}
-
 async function getFavicon(tabId) {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({action: "getFavicon", tabId: tabId}, (response) => {
-      resolve(response.favIconUrl || 'default_favicon.png');  // Use a default favicon if none is available
+      if (chrome.runtime.lastError) {
+        console.log(chrome.runtime.lastError.message);
+        resolve('default_favicon.png');
+      } else {
+        resolve(response && response.favIconUrl ? response.favIconUrl : 'default_favicon.png');
+      }
     });
   });
 }
@@ -95,7 +64,7 @@ async function updateScheduleDisplay() {
   for (let day in schedule.recurring) {
     displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
     for (const item of schedule.recurring[day]) {
-      const faviconUrl = await getFavicon(item.id);
+      const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
       displayHtml += `<div class="event-item">
         <img src="${faviconUrl}" class="favicon" alt="Favicon">
         <span class="tab-title">${item.title}</span>
@@ -119,7 +88,7 @@ async function updateScheduleDisplay() {
     if (new Date(date) >= today) {
       displayHtml += `<strong>${date}:</strong><br>`;
       for (const item of schedule.onetime[date]) {
-        const faviconUrl = await getFavicon(item.id);
+        const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
         displayHtml += `<div class="event-item">
           <img src="${faviconUrl}" class="favicon" alt="Favicon">
           <span class="tab-title">${item.title}</span>
@@ -138,6 +107,39 @@ async function updateScheduleDisplay() {
   document.getElementById('currentSchedule').innerHTML = displayHtml;
   addDeleteEventListeners();
   addReloadCheckboxListeners();
+}
+
+async function addScheduleItem() {
+  const scheduleType = document.getElementById('scheduleType').value;
+  const day = document.getElementById('day').value;
+  const date = document.getElementById('dateInput').value;
+  const time = document.getElementById('time').value;
+  const tabSelect = document.getElementById('tabSelect');
+  const selectedTabId = parseInt(tabSelect.value);
+  const selectedTabTitle = tabSelect.options[tabSelect.selectedIndex].text;
+
+  const result = await chrome.storage.sync.get(['schedule']);
+  let schedule = result.schedule || {};
+  if (!schedule.recurring) schedule.recurring = {};
+  if (!schedule.onetime) schedule.onetime = {};
+
+  const scheduleItem = {
+    id: selectedTabId,
+    title: selectedTabTitle,
+    time: time,
+    reload: false
+  };
+
+  if (scheduleType === 'recurring') {
+    if (!schedule.recurring[day]) schedule.recurring[day] = [];
+    schedule.recurring[day].push(scheduleItem);
+  } else {
+    if (!schedule.onetime[date]) schedule.onetime[date] = [];
+    schedule.onetime[date].push(scheduleItem);
+  }
+
+  await chrome.storage.sync.set({schedule: schedule});
+  updateScheduleDisplay();
 }
 
 function addDeleteEventListeners() {
