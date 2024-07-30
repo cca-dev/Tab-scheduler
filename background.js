@@ -37,34 +37,37 @@ async function checkAndSwitchTabs() {
   }
 }
 
-// Also, let's add some console logging to help with debugging
 async function switchToTab(tabInfo) {
   console.log('Attempting to switch to tab:', tabInfo);
-  if (tabInfo.id) {
-    const tab = await chrome.tabs.get(parseInt(tabInfo.id)).catch(() => null);
-    if (tab) {
-      console.log('Switching to tab with ID:', tab.id);
-      await chrome.tabs.update(tab.id, {active: true});
-      if (tabInfo.reload) {
-        console.log('Reloading tab:', tab.id);
-        await chrome.tabs.reload(tab.id);
-      }
-    } else {
-      console.log('Tab not found by ID, searching by title:', tabInfo.title);
-      const tabs = await chrome.tabs.query({});
-      const matchingTab = tabs.find(t => t.title.includes(tabInfo.title));
-      if (matchingTab) {
-        console.log('Switching to tab with title:', matchingTab.title);
-        await chrome.tabs.update(matchingTab.id, {active: true});
+  try {
+    if (tabInfo.id) {
+      const tab = await chrome.tabs.get(parseInt(tabInfo.id)).catch(() => null);
+      if (tab) {
+        console.log('Switching to tab with ID:', tab.id);
+        await chrome.tabs.update(tab.id, {active: true});
         if (tabInfo.reload) {
-          console.log('Reloading tab:', matchingTab.id);
-          await chrome.tabs.reload(matchingTab.id);
+          console.log('Reloading tab:', tab.id);
+          await chrome.tabs.reload(tab.id);
         }
       } else {
-        console.log('No matching tab found');
+        throw new Error('Tab not found by ID');
       }
+    } else {
+      throw new Error('No tab ID provided');
     }
-  } else {
-    console.log('No tab ID provided');
+  } catch (error) {
+    console.log('Error occurred, searching by title:', tabInfo.title);
+    const tabs = await chrome.tabs.query({});
+    const matchingTab = tabs.find(t => t.title.includes(tabInfo.title));
+    if (matchingTab) {
+      console.log('Switching to tab with title:', matchingTab.title);
+      await chrome.tabs.update(matchingTab.id, {active: true});
+      if (tabInfo.reload) {
+        console.log('Reloading tab:', matchingTab.id);
+        await chrome.tabs.reload(matchingTab.id);
+      }
+    } else {
+      console.log('No matching tab found');
+    }
   }
 }
