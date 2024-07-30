@@ -1,8 +1,24 @@
 document.addEventListener('DOMContentLoaded', async function() {
   await populateTabDropdown();
+  await cleanupPastEvents();
   updateScheduleDisplay();
   setupEventListeners();
 });
+
+async function cleanupPastEvents() {
+  const result = await chrome.storage.sync.get(['schedule']);
+  let schedule = result.schedule || { recurring: {}, onetime: {} };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let date in schedule.onetime) {
+    if (new Date(date) < today) {
+      delete schedule.onetime[date];
+    }
+  }
+
+  await chrome.storage.sync.set({schedule: schedule});
+}
 
 async function populateTabDropdown() {
   const tabs = await chrome.tabs.query({});
@@ -72,11 +88,17 @@ async function updateScheduleDisplay() {
   }
 
   displayHtml += '<h4>One-time Events:</h4>';
-  for (let date in schedule.onetime) {
-    displayHtml += `<strong>${date}:</strong><br>`;
-    schedule.onetime[date].forEach(item => {
-      displayHtml += `${item.time} - ${item.title}<br>`;
-    });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sortedDates = Object.keys(schedule.onetime).sort();
+
+  for (let date of sortedDates) {
+    if (new Date(date) >= today) {
+      displayHtml += `<strong>${date}:</strong><br>`;
+      schedule.onetime[date].forEach(item => {
+        displayHtml += `${item.time} - ${item.title}<br>`;
+      });
+    }
   }
 
   document.getElementById('currentSchedule').innerHTML = displayHtml;
