@@ -45,6 +45,10 @@ async function switchToTab(tabInfo) {
     if (tab) {
       console.log('Switching to tab with ID:', tab.id);
       await chrome.tabs.update(tab.id, {active: true});
+      if (tabInfo.reload) {
+        console.log('Reloading tab:', tab.id);
+        await chrome.tabs.reload(tab.id);
+      }
     } else {
       console.log('Tab not found by ID, searching by title:', tabInfo.title);
       const tabs = await chrome.tabs.query({});
@@ -52,6 +56,10 @@ async function switchToTab(tabInfo) {
       if (matchingTab) {
         console.log('Switching to tab with title:', matchingTab.title);
         await chrome.tabs.update(matchingTab.id, {active: true});
+        if (tabInfo.reload) {
+          console.log('Reloading tab:', matchingTab.id);
+          await chrome.tabs.reload(matchingTab.id);
+        }
       } else {
         console.log('No matching tab found');
       }

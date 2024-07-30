@@ -84,7 +84,12 @@ async function updateScheduleDisplay() {
     displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
     schedule.recurring[day].forEach((item, index) => {
       displayHtml += `<div class="event-item">
-        <span>${item.time} - ${item.title}</span>
+        <span>
+          <input type="checkbox" class="reload-checkbox" 
+                 ${item.reload ? 'checked' : ''}
+                 data-type="recurring" data-day="${day}" data-index="${index}">
+          ${item.time} - ${item.title}
+        </span>
         <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${index}">&times;</span>
       </div>`;
     });
@@ -100,7 +105,12 @@ async function updateScheduleDisplay() {
       displayHtml += `<strong>${date}:</strong><br>`;
       schedule.onetime[date].forEach((item, index) => {
         displayHtml += `<div class="event-item">
-          <span>${item.time} - ${item.title}</span>
+          <span>
+            <input type="checkbox" class="reload-checkbox" 
+                   ${item.reload ? 'checked' : ''}
+                   data-type="onetime" data-date="${date}" data-index="${index}">
+            ${item.time} - ${item.title}
+          </span>
           <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${index}">&times;</span>
         </div>`;
       });
@@ -109,6 +119,7 @@ async function updateScheduleDisplay() {
 
   document.getElementById('currentSchedule').innerHTML = displayHtml;
   addDeleteEventListeners();
+  addReloadCheckboxListeners();
 }
 
 function addDeleteEventListeners() {
@@ -127,6 +138,32 @@ function confirmDelete(event) {
   if (confirm('Are you sure you want to delete this event?')) {
     deleteEvent(type, index, day, date);
   }
+}
+
+function addReloadCheckboxListeners() {
+  const checkboxes = document.querySelectorAll('.reload-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updateReloadSetting);
+  });
+}
+
+async function updateReloadSetting(event) {
+  const type = event.target.dataset.type;
+  const index = parseInt(event.target.dataset.index);
+  const day = event.target.dataset.day;
+  const date = event.target.dataset.date;
+  const reload = event.target.checked;
+
+  const result = await chrome.storage.sync.get(['schedule']);
+  let schedule = result.schedule;
+
+  if (type === 'recurring') {
+    schedule.recurring[day][index].reload = reload;
+  } else if (type === 'onetime') {
+    schedule.onetime[date][index].reload = reload;
+  }
+
+  await chrome.storage.sync.set({schedule: schedule});
 }
 
 async function deleteEvent(type, index, day, date) {
