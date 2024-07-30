@@ -28,6 +28,7 @@ async function populateTabDropdown() {
     const option = document.createElement('option');
     option.value = tab.id;
     option.textContent = tab.title.length > 50 ? tab.title.substring(0, 47) + '...' : tab.title;
+    option.dataset.url = tab.url; // Add this line
     tabSelect.appendChild(option);
   });
 }
@@ -50,6 +51,7 @@ async function addScheduleItem() {
   const tabSelect = document.getElementById('tabSelect');
   const selectedTabId = tabSelect.value;
   const selectedTabTitle = tabSelect.options[tabSelect.selectedIndex].text;
+  const selectedTabUrl = tabSelect.options[tabSelect.selectedIndex].dataset.url;
 
   const result = await chrome.storage.sync.get(['schedule']);
   let schedule = result.schedule || {};
