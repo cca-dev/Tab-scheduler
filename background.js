@@ -6,6 +6,19 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getFavicon") {
+    chrome.tabs.get(request.tabId, (tab) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({favIconUrl: null});
+      } else {
+        sendResponse({favIconUrl: tab.favIconUrl});
+      }
+    });
+    return true;  // Indicates we will send a response asynchronously
+  }
+});
+
 async function checkAndSwitchTabs() {
   const result = await chrome.storage.sync.get(['schedule']);
   let schedule = result.schedule || {};

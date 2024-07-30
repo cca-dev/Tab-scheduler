@@ -78,6 +78,14 @@ async function addScheduleItem() {
   updateScheduleDisplay();
 }
 
+async function getFavicon(tabId) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({action: "getFavicon", tabId: tabId}, (response) => {
+      resolve(response.favIconUrl || 'default_favicon.png');  // Use a default favicon if none is available
+    });
+  });
+}
+
 async function updateScheduleDisplay() {
   const result = await chrome.storage.sync.get(['schedule']);
   const schedule = result.schedule || { recurring: {}, onetime: {} };
@@ -86,19 +94,20 @@ async function updateScheduleDisplay() {
   displayHtml += '<h4>Recurring Events:</h4>';
   for (let day in schedule.recurring) {
     displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
-    schedule.recurring[day].forEach((item, index) => {
+    for (const item of schedule.recurring[day]) {
+      const faviconUrl = await getFavicon(item.id);
       displayHtml += `<div class="event-item">
-        <img src="chrome://favicon/${item.url}" class="favicon" alt="Favicon">
+        <img src="${faviconUrl}" class="favicon" alt="Favicon">
         <span class="tab-title">${item.title}</span>
         <label class="reload-label">
           <input type="checkbox" class="reload-checkbox" 
                  ${item.reload ? 'checked' : ''}
-                 data-type="recurring" data-day="${day}" data-index="${index}">
+                 data-type="recurring" data-day="${day}" data-index="${schedule.recurring[day].indexOf(item)}">
           Reload
         </label>
-        <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${index}">&times;</span>
+        <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${schedule.recurring[day].indexOf(item)}">&times;</span>
       </div>`;
-    });
+    }
   }
 
   displayHtml += '<h4>One-time Events:</h4>';
@@ -109,19 +118,20 @@ async function updateScheduleDisplay() {
   for (let date of sortedDates) {
     if (new Date(date) >= today) {
       displayHtml += `<strong>${date}:</strong><br>`;
-      schedule.onetime[date].forEach((item, index) => {
+      for (const item of schedule.onetime[date]) {
+        const faviconUrl = await getFavicon(item.id);
         displayHtml += `<div class="event-item">
-          <img src="chrome://favicon/${item.url}" class="favicon" alt="Favicon">
+          <img src="${faviconUrl}" class="favicon" alt="Favicon">
           <span class="tab-title">${item.title}</span>
           <label class="reload-label">
             <input type="checkbox" class="reload-checkbox" 
                    ${item.reload ? 'checked' : ''}
-                   data-type="onetime" data-date="${date}" data-index="${index}">
+                   data-type="onetime" data-date="${date}" data-index="${schedule.onetime[date].indexOf(item)}">
             Reload
           </label>
-          <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${index}">&times;</span>
+          <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${schedule.onetime[date].indexOf(item)}">&times;</span>
         </div>`;
-      });
+      }
     }
   }
 
