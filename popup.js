@@ -59,7 +59,9 @@ async function addScheduleItem() {
   const scheduleItem = {
     id: selectedTabId,
     title: selectedTabTitle,
-    time: time
+    time: time,
+    url: selectedTabUrl,
+    reload: false // Initialize reload as false
   };
 
   if (scheduleType === 'recurring') {
