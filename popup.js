@@ -85,7 +85,7 @@ async function updateScheduleDisplay() {
     schedule.recurring[day].forEach((item, index) => {
       displayHtml += `<div class="event-item">
         <span>${item.time} - ${item.title}</span>
-        <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${index}">❌</span>
+        <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${index}">&times;</span>
       </div>`;
     });
   }
@@ -101,7 +101,7 @@ async function updateScheduleDisplay() {
       schedule.onetime[date].forEach((item, index) => {
         displayHtml += `<div class="event-item">
           <span>${item.time} - ${item.title}</span>
-          <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${index}">❌</span>
+          <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${index}">&times;</span>
         </div>`;
       });
     }
