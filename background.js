@@ -1,35 +1,95 @@
+const SHARED_FILE_URL = 'file:///Z:/SharedFolder/tab_schedule.json'; // Adjust this path to your network share
+
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
+chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkSchedule") {
     checkAndSwitchTabs();
+  } else if (alarm.name === "syncSchedule") {
+    syncScheduleWithNetwork();
   }
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getFavicon") {
-    const tabId = parseInt(request.tabId);
-    if (isNaN(tabId)) {
-      sendResponse({favIconUrl: null});
-      return true;
-    }
-    chrome.tabs.get(tabId, (tab) => {
-      if (chrome.runtime.lastError) {
-        console.log(chrome.runtime.lastError.message);
-        sendResponse({favIconUrl: null});
-      } else {
-        sendResponse({favIconUrl: tab.favIconUrl || null});
-      }
+    // ... (keep existing getFavicon code)
+  } else if (request.action === "updateSchedule") {
+    chrome.storage.local.set({schedule: request.schedule}, () => {
+      syncScheduleWithNetwork();
+      sendResponse({status: 'success'});
     });
-    return true;  // Indicates we will send a response asynchronously
+    return true;
   }
 });
 
+async function syncScheduleWithNetwork() {
+  try {
+    const response = await fetch(SHARED_FILE_URL);
+    if (response.ok) {
+      const networkSchedule = await response.json();
+      const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+      
+      // Merge network and local schedules
+      const mergedSchedule = mergeSchedules(networkSchedule, localSchedule);
+      
+      // Update local storage
+      await chrome.storage.local.set({schedule: mergedSchedule});
+      
+      // Write merged schedule back to network
+      await writeScheduleToNetwork(mergedSchedule);
+    }
+  } catch (error) {
+    console.error('Error syncing schedule:', error);
+  }
+}
+
+function mergeSchedules(networkSchedule, localSchedule) {
+  const mergedSchedule = { recurring: {}, onetime: {} };
+
+  // Merge recurring events
+  for (const day in {...networkSchedule.recurring, ...localSchedule.recurring}) {
+    mergedSchedule.recurring[day] = [
+      ...(networkSchedule.recurring[day] || []),
+      ...(localSchedule.recurring[day] || [])
+    ];
+    // Remove duplicates
+    mergedSchedule.recurring[day] = Array.from(new Set(mergedSchedule.recurring[day].map(JSON.stringify))).map(JSON.parse);
+  }
+
+  // Merge one-time events
+  for (const date in {...networkSchedule.onetime, ...localSchedule.onetime}) {
+    mergedSchedule.onetime[date] = [
+      ...(networkSchedule.onetime[date] || []),
+      ...(localSchedule.onetime[date] || [])
+    ];
+    // Remove duplicates
+    mergedSchedule.onetime[date] = Array.from(new Set(mergedSchedule.onetime[date].map(JSON.stringify))).map(JSON.parse);
+  }
+
+  return mergedSchedule;
+}
+
+async function writeScheduleToNetwork(schedule) {
+  try {
+    const response = await fetch(SHARED_FILE_URL, {
+      method: 'PUT',
+      body: JSON.stringify(schedule),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error('Failed to write schedule to network');
+    }
+  } catch (error) {
+    console.error('Error writing schedule to network:', error);
+  }
+}
+
 async function checkAndSwitchTabs() {
-  const result = await chrome.storage.sync.get(['schedule']);
-  let schedule = result.schedule || {};
-  if (!schedule.recurring) schedule.recurring = {};
-  if (!schedule.onetime) schedule.onetime = {};
+  const { schedule } = await chrome.storage.local.get('schedule');
+  if (!schedule) return;
 
   const now = new Date();
   const day = now.toLocaleString('en-us', {weekday: 'long'}).toLowerCase();
@@ -37,7 +97,7 @@ async function checkAndSwitchTabs() {
   const time = now.toTimeString().slice(0, 5); // HH:MM format
 
   // Check recurring schedule
-  if (schedule.recurring[day]) {
+  if (schedule.recurring && schedule.recurring[day]) {
     const matchingItem = schedule.recurring[day].find(item => item.time === time);
     if (matchingItem) {
       switchToTab(matchingItem);
@@ -45,13 +105,14 @@ async function checkAndSwitchTabs() {
   }
 
   // Check one-time schedule
-  if (schedule.onetime[date]) {
+  if (schedule.onetime && schedule.onetime[date]) {
     const matchingItem = schedule.onetime[date].find(item => item.time === time);
     if (matchingItem) {
       switchToTab(matchingItem);
       // Remove the one-time event after it's triggered
       schedule.onetime[date] = schedule.onetime[date].filter(item => item.time !== time);
-      await chrome.storage.sync.set({schedule: schedule});
+      await chrome.storage.local.set({schedule});
+      syncScheduleWithNetwork();
     }
   }
 }

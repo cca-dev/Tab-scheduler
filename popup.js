@@ -6,18 +6,19 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function cleanupPastEvents() {
-  const result = await chrome.storage.sync.get(['schedule']);
-  let schedule = result.schedule || { recurring: {}, onetime: {} };
+  const { schedule } = await chrome.storage.local.get('schedule');
+  let updatedSchedule = schedule || { recurring: {}, onetime: {} };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  for (let date in schedule.onetime) {
+  for (let date in updatedSchedule.onetime) {
     if (new Date(date) < today) {
-      delete schedule.onetime[date];
+      delete updatedSchedule.onetime[date];
     }
   }
 
-  await chrome.storage.sync.set({schedule: schedule});
+  await chrome.storage.local.set({schedule: updatedSchedule});
+  chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule});
 }
 
 async function populateTabDropdown() {
@@ -56,8 +57,7 @@ async function getFavicon(tabId) {
 }
 
 async function updateScheduleDisplay() {
-  const result = await chrome.storage.sync.get(['schedule']);
-  const schedule = result.schedule || { recurring: {}, onetime: {} };
+  const { schedule } = await chrome.storage.local.get('schedule');
   let displayHtml = '<h3>Current Schedule:</h3>';
 
   displayHtml += '<h4>Recurring Events:</h4>';
@@ -118,10 +118,10 @@ async function addScheduleItem() {
   const selectedTabId = parseInt(tabSelect.value);
   const selectedTabTitle = tabSelect.options[tabSelect.selectedIndex].text;
 
-  const result = await chrome.storage.sync.get(['schedule']);
-  let schedule = result.schedule || {};
-  if (!schedule.recurring) schedule.recurring = {};
-  if (!schedule.onetime) schedule.onetime = {};
+  const { schedule } = await chrome.storage.local.get('schedule');
+  let updatedSchedule = schedule || {};
+  if (!updatedSchedule.recurring) updatedSchedule.recurring = {};
+  if (!updatedSchedule.onetime) updatedSchedule.onetime = {};
 
   const scheduleItem = {
     id: selectedTabId,
@@ -131,14 +131,15 @@ async function addScheduleItem() {
   };
 
   if (scheduleType === 'recurring') {
-    if (!schedule.recurring[day]) schedule.recurring[day] = [];
-    schedule.recurring[day].push(scheduleItem);
+    if (!updatedSchedule.recurring[day]) updatedSchedule.recurring[day] = [];
+    updatedSchedule.recurring[day].push(scheduleItem);
   } else {
-    if (!schedule.onetime[date]) schedule.onetime[date] = [];
-    schedule.onetime[date].push(scheduleItem);
+    if (!updatedSchedule.onetime[date]) updatedSchedule.onetime[date] = [];
+    updatedSchedule.onetime[date].push(scheduleItem);
   }
 
-  await chrome.storage.sync.set({schedule: schedule});
+  await chrome.storage.local.set({schedule: updatedSchedule});
+  chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule});
   updateScheduleDisplay();
 }
 
@@ -174,34 +175,36 @@ async function updateReloadSetting(event) {
   const date = event.target.dataset.date;
   const reload = event.target.checked;
 
-  const result = await chrome.storage.sync.get(['schedule']);
-  let schedule = result.schedule;
+  const { schedule } = await chrome.storage.local.get('schedule');
+  let updatedSchedule = schedule;
 
   if (type === 'recurring') {
-    schedule.recurring[day][index].reload = reload;
+    updatedSchedule.recurring[day][index].reload = reload;
   } else if (type === 'onetime') {
-    schedule.onetime[date][index].reload = reload;
+    updatedSchedule.onetime[date][index].reload = reload;
   }
 
-  await chrome.storage.sync.set({schedule: schedule});
+  await chrome.storage.local.set({schedule: updatedSchedule});
+  chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule});
 }
 
 async function deleteEvent(type, index, day, date) {
-  const result = await chrome.storage.sync.get(['schedule']);
-  let schedule = result.schedule || { recurring: {}, onetime: {} };
+  const { schedule } = await chrome.storage.local.get('schedule');
+  let updatedSchedule = schedule || { recurring: {}, onetime: {} };
 
   if (type === 'recurring') {
-    schedule.recurring[day].splice(index, 1);
-    if (schedule.recurring[day].length === 0) {
-      delete schedule.recurring[day];
+    updatedSchedule.recurring[day].splice(index, 1);
+    if (updatedSchedule.recurring[day].length === 0) {
+      delete updatedSchedule.recurring[day];
     }
   } else if (type === 'onetime') {
-    schedule.onetime[date].splice(index, 1);
-    if (schedule.onetime[date].length === 0) {
-      delete schedule.onetime[date];
+    updatedSchedule.onetime[date].splice(index, 1);
+    if (updatedSchedule.onetime[date].length === 0) {
+      delete updatedSchedule.onetime[date];
     }
   }
 
-  await chrome.storage.sync.set({schedule: schedule});
+  await chrome.storage.local.set({schedule: updatedSchedule});
+  chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule});
   updateScheduleDisplay();
 }

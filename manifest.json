@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "CCA Kiosk Tab Scheduler",
-  "version": "1.1",
+  "version": "1.2",
   "permissions": [
     "tabs",
     "alarms",
     "storage"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "file:///\\CCC-DC01\Office\Public Folders\Charity Information\CCA PC Accounts\CCA Tab Switcher"
   ],
   "background": {
     "service_worker": "background.js"
