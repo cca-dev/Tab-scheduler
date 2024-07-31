@@ -1,4 +1,4 @@
-const SHARED_FILE_URL = 'file://CCC-DC01/Office/Public%20Folders/Charity%20Information/CCA%20PC%20Accounts/CCA%20Tab%20Switcher/tab_schedule.json';
+const SHARED_FILE_URL = 'http://localhost/tab_schedule.json';
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
@@ -35,8 +35,6 @@ async function syncScheduleWithNetwork() {
       await chrome.storage.local.set({schedule: mergedSchedule});
       
       await writeScheduleToNetwork(mergedSchedule);
-    } else {
-      console.error(`Failed to fetch schedule. Status: ${response.status}`);
     }
   } catch (error) {
     console.error('Error syncing schedule:', error);
@@ -71,7 +69,6 @@ function mergeSchedules(networkSchedule, localSchedule) {
 
 async function writeScheduleToNetwork(schedule) {
   console.log('Attempting to write schedule to network...');
-  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
       method: 'PUT',
@@ -80,31 +77,14 @@ async function writeScheduleToNetwork(schedule) {
         'Content-Type': 'application/json'
       }
     });
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-
-    const responseText = await response.text();
-    console.log('Response from write operation:', responseText);
-
-    // Introduce a delay before verification
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Verify if the file was actually updated
-    const verificationResponse = await fetch(SHARED_FILE_URL);
-    const updatedContent = await verificationResponse.text();
-    console.log('Updated file content:', updatedContent);
-
-    if (updatedContent === JSON.stringify(schedule)) {
-      console.log('Schedule successfully written and verified on network');
-    } else {
-      console.warn('Write operation completed, but content verification failed');
-    }
+    
+    console.log('Schedule successfully written to network');
   } catch (error) {
     console.error('Error writing schedule to network:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
   }
 }
 
