@@ -15,11 +15,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getFavicon") {
     // ... (keep existing getFavicon code)
   } else if (request.action === "updateSchedule") {
-    chrome.storage.local.set({schedule: request.schedule}, () => {
-      syncScheduleWithNetwork();
-      sendResponse({status: 'success'});
+    chrome.storage.local.set({ schedule: request.schedule }, async () => {
+      await syncScheduleWithNetwork();
+      sendResponse({ status: 'success' });
     });
-    return true;
+    return true; // Keeps the message channel open for async sendResponse
   }
 });
 
@@ -80,18 +80,22 @@ async function writeScheduleToNetwork(schedule) {
         'Content-Type': 'application/json'
       }
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const responseText = await response.text();
     console.log('Response from write operation:', responseText);
-    
+
+    // Introduce a delay before verification
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Verify if the file was actually updated
     const verificationResponse = await fetch(SHARED_FILE_URL);
     const updatedContent = await verificationResponse.text();
     console.log('Updated file content:', updatedContent);
-    
+
     if (updatedContent === JSON.stringify(schedule)) {
       console.log('Schedule successfully written and verified on network');
     } else {
@@ -103,6 +107,7 @@ async function writeScheduleToNetwork(schedule) {
     console.error('Error stack:', error.stack);
   }
 }
+
 
 async function checkAndSwitchTabs() {
   const { schedule } = await chrome.storage.local.get('schedule');
