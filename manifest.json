@@ -9,7 +9,7 @@
   ],
   "host_permissions": [
     "<all_urls>",
-    "file:///\\CCC-DC01\Office\Public Folders\Charity Information\CCA PC Accounts\CCA Tab Switcher"
+    "file:///*"
   ],
   "background": {
     "service_worker": "background.js"

@@ -1,4 +1,4 @@
-const SHARED_FILE_URL = 'file:///Z:/SharedFolder/tab_schedule.json'; // Adjust this path to your network share
+const SHARED_FILE_URL = 'file://CCC-DC01/Office/Public%20Folders/Charity%20Information/CCA%20PC%20Accounts/CCA%20Tab%20Switcher/tab_schedule.json';
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
