@@ -30,14 +30,13 @@ async function syncScheduleWithNetwork() {
       const networkSchedule = await response.json();
       const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
       
-      // Merge network and local schedules
       const mergedSchedule = mergeSchedules(networkSchedule, localSchedule);
       
-      // Update local storage
       await chrome.storage.local.set({schedule: mergedSchedule});
       
-      // Write merged schedule back to network
       await writeScheduleToNetwork(mergedSchedule);
+    } else {
+      console.error(`Failed to fetch schedule. Status: ${response.status}`);
     }
   } catch (error) {
     console.error('Error syncing schedule:', error);
@@ -71,6 +70,8 @@ function mergeSchedules(networkSchedule, localSchedule) {
 }
 
 async function writeScheduleToNetwork(schedule) {
+  console.log('Attempting to write schedule to network...');
+  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
       method: 'PUT',
@@ -79,11 +80,27 @@ async function writeScheduleToNetwork(schedule) {
         'Content-Type': 'application/json'
       }
     });
+    
     if (!response.ok) {
-      throw new Error('Failed to write schedule to network');
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const responseText = await response.text();
+    console.log('Response from write operation:', responseText);
+    
+    const verificationResponse = await fetch(SHARED_FILE_URL);
+    const updatedContent = await verificationResponse.text();
+    console.log('Updated file content:', updatedContent);
+    
+    if (updatedContent === JSON.stringify(schedule)) {
+      console.log('Schedule successfully written and verified on network');
+    } else {
+      console.warn('Write operation completed, but content verification failed');
     }
   } catch (error) {
     console.error('Error writing schedule to network:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
   }
 }
 
