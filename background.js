@@ -1,10 +1,58 @@
 const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule/tab_schedule.json';
+
+// Log all network requests (for debugging)
 chrome.webRequest.onBeforeRequest.addListener(
   function(details) {
     console.log('Network request:', details);
   },
   {urls: ["<all_urls>"]}
 );
+
+async function testWritePermissions() {
+  const testSchedule = {
+    test: "This is a test to check write permissions",
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    console.log('Attempting to write test schedule to network...');
+    const writeResponse = await fetch(SHARED_FILE_URL, {
+      method: 'PUT',
+      body: JSON.stringify(testSchedule),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!writeResponse.ok) {
+      throw new Error(`HTTP error! status: ${writeResponse.status}`);
+    }
+
+    console.log('Test write operation completed. Verifying written content...');
+
+    // Introduce a short delay before reading back the file
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const verificationResponse = await fetch(SHARED_FILE_URL);
+    const updatedContent = await verificationResponse.text();
+
+    console.log('Updated file content:', updatedContent);
+
+    if (updatedContent === JSON.stringify(testSchedule)) {
+      console.log('Write permissions test successful: Data written and verified.');
+    } else {
+      console.warn('Write permissions test failed: Content mismatch.');
+    }
+  } catch (error) {
+    console.error('Error testing write permissions:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+  }
+}
+
+// Call the test function when the extension is loaded
+testWritePermissions();
+
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
 
@@ -18,7 +66,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getFavicon") {
-    // ... (keep existing getFavicon code)
+    chrome.tabs.get(request.tabId, (tab) => {
+      sendResponse({favIconUrl: tab.favIconUrl});
+    });
+    return true; // Keeps the message channel open for async sendResponse
   } else if (request.action === "updateSchedule") {
     chrome.storage.local.set({ schedule: request.schedule }, async () => {
       await syncScheduleWithNetwork();
@@ -35,7 +86,13 @@ async function syncScheduleWithNetwork() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const networkSchedule = await response.json();
-    // ... rest of the function ...
+    const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+    
+    const mergedSchedule = mergeSchedules(networkSchedule, localSchedule);
+    
+    await chrome.storage.local.set({schedule: mergedSchedule});
+    
+    await writeScheduleToNetwork(mergedSchedule);
   } catch (error) {
     console.error('Error syncing schedule:', error);
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -74,6 +131,7 @@ function mergeSchedules(networkSchedule, localSchedule) {
 
 async function writeScheduleToNetwork(schedule) {
   console.log('Attempting to write schedule to network...');
+  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
       method: 'PUT',
@@ -82,17 +140,33 @@ async function writeScheduleToNetwork(schedule) {
         'Content-Type': 'application/json'
       }
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
-    console.log('Schedule successfully written to network');
+
+    const responseText = await response.text();
+    console.log('Response from write operation:', responseText);
+
+    // Introduce a delay before verification
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Verify if the file was actually updated
+    const verificationResponse = await fetch(SHARED_FILE_URL);
+    const updatedContent = await verificationResponse.text();
+    console.log('Updated file content:', updatedContent);
+
+    if (updatedContent === JSON.stringify(schedule)) {
+      console.log('Schedule successfully written and verified on network');
+    } else {
+      console.warn('Write operation completed, but content verification failed');
+    }
   } catch (error) {
     console.error('Error writing schedule to network:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
   }
 }
-
 
 async function checkAndSwitchTabs() {
   const { schedule } = await chrome.storage.local.get('schedule');
