@@ -1,4 +1,4 @@
-const SHARED_FILE_URL = 'http://localhost/tab_schedule/tab_schedule.json';
+const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule/tab_schedule.json';
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
