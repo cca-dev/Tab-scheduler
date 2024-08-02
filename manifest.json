@@ -18,5 +18,8 @@
   },
   "action": {
     "default_popup": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://ccc.local:44300"
   }
 }
