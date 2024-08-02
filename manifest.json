@@ -9,8 +9,8 @@
   ],
   "host_permissions": [
     "<all_urls>",
-    "file:///*"
-    "https://ccc.local*"
+    "file:///*",
+    "https://ccc.local*",
     "http://ccc.local*"
   ],
   "background": {
