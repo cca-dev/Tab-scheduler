@@ -1,5 +1,10 @@
 const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule/tab_schedule.json';
-
+chrome.webRequest.onBeforeRequest.addListener(
+  function(details) {
+    console.log('Network request:', details);
+  },
+  {urls: ["<all_urls>"]}
+);
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
 
@@ -26,18 +31,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function syncScheduleWithNetwork() {
   try {
     const response = await fetch(SHARED_FILE_URL);
-    if (response.ok) {
-      const networkSchedule = await response.json();
-      const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
-      
-      const mergedSchedule = mergeSchedules(networkSchedule, localSchedule);
-      
-      await chrome.storage.local.set({schedule: mergedSchedule});
-      
-      await writeScheduleToNetwork(mergedSchedule);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    const networkSchedule = await response.json();
+    // ... rest of the function ...
   } catch (error) {
     console.error('Error syncing schedule:', error);
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error('This might be due to CORS or network issues. Check your server configuration and network connection.');
+    }
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
   }
 }
 
