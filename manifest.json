@@ -10,6 +10,7 @@
   "host_permissions": [
     "<all_urls>",
     "file:///*"
+    "https://ccc.local*"
   ],
   "background": {
     "service_worker": "background.js"
