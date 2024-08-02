@@ -2,16 +2,18 @@
   "manifest_version": 3,
   "name": "CCA Kiosk Tab Scheduler",
   "version": "1.2",
+  "description": "A Chrome extension for scheduling tab switches in a kiosk environment",
   "permissions": [
     "tabs",
     "alarms",
-    "storage"
+    "storage",
+    "webRequest"
   ],
   "host_permissions": [
     "<all_urls>",
     "file:///*",
-    "https://ccc.local:44300/*",
-    "http://ccc.local:44300/*"
+    "https://ccc.local/*",
+    "http://ccc.local/*"
   ],
   "background": {
     "service_worker": "background.js"
