@@ -1,4 +1,4 @@
-const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule/tab_schedule.json';
+const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
 // Log all network requests (for debugging)
 chrome.webRequest.onBeforeRequest.addListener(
@@ -7,51 +7,6 @@ chrome.webRequest.onBeforeRequest.addListener(
   },
   {urls: ["<all_urls>"]}
 );
-
-async function testWritePermissions() {
-  const testSchedule = {
-    test: "This is a test to check write permissions",
-    timestamp: new Date().toISOString()
-  };
-
-  try {
-    console.log('Attempting to write test schedule to network...');
-    const writeResponse = await fetch(SHARED_FILE_URL, {
-      method: 'PUT',
-      body: JSON.stringify(testSchedule),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!writeResponse.ok) {
-      throw new Error(`HTTP error! status: ${writeResponse.status}`);
-    }
-
-    console.log('Test write operation completed. Verifying written content...');
-
-    // Introduce a short delay before reading back the file
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const verificationResponse = await fetch(SHARED_FILE_URL);
-    const updatedContent = await verificationResponse.text();
-
-    console.log('Updated file content:', updatedContent);
-
-    if (updatedContent === JSON.stringify(testSchedule)) {
-      console.log('Write permissions test successful: Data written and verified.');
-    } else {
-      console.warn('Write permissions test failed: Content mismatch.');
-    }
-  } catch (error) {
-    console.error('Error testing write permissions:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
-  }
-}
-
-// Call the test function when the extension is loaded
-testWritePermissions();
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
