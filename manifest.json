@@ -7,8 +7,7 @@
     "tabs",
     "alarms",
     "storage",
-    "webRequest",
-    "https://ccc.local:44300/"
+    "webRequest"
   ],
   "host_permissions": [
     "<all_urls>",
