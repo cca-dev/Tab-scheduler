@@ -12,8 +12,8 @@
   "host_permissions": [
     "<all_urls>",
     "file:///*",
-    "https://ccc.local/*",
-    "http://ccc.local/*"
+    "https://ccc.local:44300/*",
+    "http://ccc.local:44300/*"
   ],
   "background": {
     "service_worker": "background.js"
