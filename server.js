@@ -2,10 +2,14 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
+const https = require('https');
 const app = express();
 const PORT = 44300;
 
+// Use CORS to allow cross-origin requests
 app.use(cors());
+
+// Middleware to parse JSON request bodies
 app.use(express.json());
 
 const filePath = path.join(__dirname, 'tab_schedule.json');
@@ -32,6 +36,12 @@ app.post('/tab_schedule.json', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at https://localhost:${PORT}`);
+// HTTPS options - using self-signed certificates for local testing
+const httpsOptions = {
+  key: fs.readFileSync('path/to/your/ssl/key.pem'),
+  cert: fs.readFileSync('path/to/your/ssl/cert.pem')
+};
+
+https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running at https://ccc.local:${PORT}`);
 });
