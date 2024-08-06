@@ -86,35 +86,40 @@ function mergeSchedules(networkSchedule, localSchedule) {
 
 async function writeScheduleToNetwork(schedule) {
   console.log('Attempting to write schedule to network...');
+  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
-      method: 'POST', // Changed from PUT to POST
+      method: 'PUT',
       body: JSON.stringify(schedule),
       headers: {
         'Content-Type': 'application/json'
-      },
-      credentials: 'include'
+      }
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const responseText = await response.text();
     console.log('Response from write operation:', responseText);
-    console.log('Schedule successfully written to network');
+
+    // Introduce a delay before verification
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Verify if the file was actually updated
+    const verificationResponse = await fetch(SHARED_FILE_URL);
+    const updatedContent = await verificationResponse.text();
+    console.log('Updated file content:', updatedContent);
+
+    if (updatedContent === JSON.stringify(schedule)) {
+      console.log('Schedule successfully written and verified on network');
+    } else {
+      console.warn('Write operation completed, but content verification failed');
+    }
   } catch (error) {
     console.error('Error writing schedule to network:', error);
     console.error('Error details:', error.message);
     console.error('Error stack:', error.stack);
-    console.error('Request URL:', SHARED_FILE_URL);
-    console.error('Request method:', 'POST'); // Changed from PUT to POST
-    
-    if (error.message.includes('405')) {
-      console.error('This might be due to the server not allowing POST requests. Check your server configuration.');
-    } else if (error.message.includes('CORS')) {
-      console.error('This might be due to CORS issues. Ensure your server is configured to accept requests from this extension.');
-    }
   }
 }
 
