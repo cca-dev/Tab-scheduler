@@ -7,13 +7,11 @@
     "tabs",
     "alarms",
     "storage",
-    "webRequest"
+    "webRequest",
+    "webRequestBlocking"
   ],
   "host_permissions": [
-    "<all_urls>",
-    "file:///*",
-    "https://ccc.local:44300/*",
-    "http://ccc.local:44300/*"
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -22,6 +20,6 @@
     "default_popup": "popup.html"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://ccc.local:44300"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://localhost:44300"
   }
 }
