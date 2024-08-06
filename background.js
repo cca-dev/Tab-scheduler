@@ -1,4 +1,4 @@
-const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
+const SHARED_FILE_URL = 'https://localhost:44300/tab_schedule.json';
 
 // Log all network requests (for debugging)
 chrome.webRequest.onBeforeRequest.addListener(
@@ -89,7 +89,7 @@ async function writeScheduleToNetwork(schedule) {
   console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
-      method: 'PUT',
+      method: 'POST',
       body: JSON.stringify(schedule),
       headers: {
         'Content-Type': 'application/json'
