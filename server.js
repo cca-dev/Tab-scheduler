@@ -1,9 +1,11 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const cors = require('cors');
 const app = express();
 const PORT = 44300;
 
+app.use(cors());
 app.use(express.json());
 
 const filePath = path.join(__dirname, 'tab_schedule.json');
