@@ -11,7 +11,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
 // Create a new alarm for cleanup
-chrome.alarms.create("cleanupTabs", { periodInMinutes: 30 }); // Run every half hour
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 6 }); // Run every 6 minutes
 
 // Add this to your existing alarm listeners
 chrome.alarms.onAlarm.addListener((alarm) => {
