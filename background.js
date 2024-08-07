@@ -1,17 +1,11 @@
 const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
-// Log all network requests (for debugging)
-chrome.webRequest.onBeforeRequest.addListener(
-  function(details) {
-    console.log('Network request:', details);
-  },
-  {urls: ["<all_urls>"]}
-);
-
+// Create alarms for periodic tasks
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
-chrome.alarms.create("syncSchedule", { periodInMinutes: 1 }); // Sync every 5 minutes
-chrome.alarms.create("cleanupTabs", { periodInMinutes: 1 }); // Cleanup every 5 minutes
+chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 1 }); // Cleanup every minute
 
+// Listen for alarm triggers
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkSchedule") {
     checkAndSwitchTabs();
@@ -22,10 +16,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Listen for messages from other parts of the extension
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getFavicon") {
     chrome.tabs.get(request.tabId, (tab) => {
-      sendResponse({favIconUrl: tab.favIconUrl});
+      sendResponse({ favIconUrl: tab.favIconUrl });
     });
     return true; // Keeps the message channel open for async sendResponse
   } else if (request.action === "updateSchedule") {
@@ -37,71 +32,76 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+// Sync the local schedule with the network
 async function syncScheduleWithNetwork() {
   try {
-    const { schedule } = await chrome.storage.local.get('schedule');
-    const writeSuccess = await writeScheduleToNetwork(schedule);
-    if (!writeSuccess) {
-      console.error('Failed to write schedule to network');
-      return false;
+    const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+    const currentSchedule = await fetchScheduleFromNetwork();
+    
+    if (currentSchedule) {
+      const mergedSchedule = mergeSchedules(currentSchedule, localSchedule);
+      const writeSuccess = await writeScheduleToNetwork(mergedSchedule);
+      
+      if (writeSuccess) {
+        console.log('Schedule successfully synced');
+      } else {
+        console.error('Failed to sync schedule');
+      }
     }
-    return true;
   } catch (error) {
     console.error('Error syncing schedule:', error);
-    return false;
   }
 }
 
+// Fetch the current schedule from the network
+async function fetchScheduleFromNetwork() {
+  try {
+    const response = await fetch(SHARED_FILE_URL);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching schedule from network:', error);
+    return { recurring: {}, onetime: {} }; // Fallback to empty schedule
+  }
+}
+
+// Merge the local schedule with the network schedule
+function mergeSchedules(remoteSchedule, localSchedule) {
+  return {
+    recurring: { ...remoteSchedule.recurring, ...localSchedule.recurring },
+    onetime: { ...remoteSchedule.onetime, ...localSchedule.onetime }
+  };
+}
+
+// Write the schedule to the network and verify it
 async function writeScheduleToNetwork(schedule) {
-  console.log('Attempting to write schedule to network...');
-  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
       method: 'POST',
       body: JSON.stringify(schedule),
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const responseText = await response.text();
-    console.log('Response from write operation:', responseText);
-
-    // Introduce a delay before verification
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Verify if the file was actually updated
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    // Verification step
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
     const verificationResponse = await fetch(SHARED_FILE_URL);
     const updatedContent = await verificationResponse.json();
-    console.log('Updated file content:', JSON.stringify(updatedContent, null, 2));
-
-    if (JSON.stringify(updatedContent) === JSON.stringify(schedule)) {
-      console.log('Schedule successfully written and verified on network');
-      return true;
-    } else {
-      console.warn('Write operation completed, but content verification failed');
-      console.log('Expected:', JSON.stringify(schedule, null, 2));
-      console.log('Actual:', JSON.stringify(updatedContent, null, 2));
-      return false;
-    }
+    
+    return JSON.stringify(updatedContent) === JSON.stringify(schedule);
   } catch (error) {
     console.error('Error writing schedule to network:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
     return false;
   }
 }
 
+// Check and switch tabs based on the schedule
 async function checkAndSwitchTabs() {
   const { schedule } = await chrome.storage.local.get('schedule');
   if (!schedule) return;
 
   const now = new Date();
-  const day = now.toLocaleString('en-us', {weekday: 'long'}).toLowerCase();
+  const day = now.toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
   const date = now.toISOString().split('T')[0]; // YYYY-MM-DD format
   const time = now.toTimeString().slice(0, 5); // HH:MM format
 
@@ -109,7 +109,7 @@ async function checkAndSwitchTabs() {
   if (schedule.recurring && schedule.recurring[day]) {
     const matchingItem = schedule.recurring[day].find(item => item.time === time);
     if (matchingItem) {
-      switchToTab(matchingItem);
+      await switchToTab(matchingItem);
     }
   }
 
@@ -117,15 +117,16 @@ async function checkAndSwitchTabs() {
   if (schedule.onetime && schedule.onetime[date]) {
     const matchingItem = schedule.onetime[date].find(item => item.time === time);
     if (matchingItem) {
-      switchToTab(matchingItem);
+      await switchToTab(matchingItem);
       // Remove the one-time event after it's triggered
       schedule.onetime[date] = schedule.onetime[date].filter(item => item.time !== time);
-      await chrome.storage.local.set({schedule});
-      syncScheduleWithNetwork();
+      await chrome.storage.local.set({ schedule });
+      await syncScheduleWithNetwork();
     }
   }
 }
 
+// Switch to a tab based on the given tab information
 async function switchToTab(tabInfo) {
   console.log('Attempting to switch to tab:', tabInfo);
   try {
@@ -133,7 +134,7 @@ async function switchToTab(tabInfo) {
       const tab = await chrome.tabs.get(parseInt(tabInfo.id)).catch(() => null);
       if (tab) {
         console.log('Switching to tab with ID:', tab.id);
-        await chrome.tabs.update(tab.id, {active: true});
+        await chrome.tabs.update(tab.id, { active: true });
         if (tabInfo.reload) {
           console.log('Reloading tab:', tab.id);
           await chrome.tabs.reload(tab.id);
@@ -150,7 +151,7 @@ async function switchToTab(tabInfo) {
     const matchingTab = tabs.find(t => t.title.includes(tabInfo.title));
     if (matchingTab) {
       console.log('Switching to tab with title:', matchingTab.title);
-      await chrome.tabs.update(matchingTab.id, {active: true});
+      await chrome.tabs.update(matchingTab.id, { active: true });
       if (tabInfo.reload) {
         console.log('Reloading tab:', matchingTab.id);
         await chrome.tabs.reload(matchingTab.id);
@@ -161,6 +162,7 @@ async function switchToTab(tabInfo) {
   }
 }
 
+// Cleanup tabs that no longer exist
 async function cleanupNonExistentTabs() {
   const { schedule } = await chrome.storage.local.get('schedule');
   let updatedSchedule = { recurring: {}, onetime: {} };
@@ -198,7 +200,7 @@ async function cleanupNonExistentTabs() {
   }
 
   if (hasChanges) {
-    await chrome.storage.local.set({schedule: updatedSchedule});
+    await chrome.storage.local.set({ schedule: updatedSchedule });
     await syncScheduleWithNetwork();
   }
 }
