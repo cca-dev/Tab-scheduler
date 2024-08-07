@@ -197,7 +197,7 @@ async function updateReloadSetting(event) {
 
 async function deleteEvent(type, index, day, date) {
   const { schedule } = await chrome.storage.local.get('schedule');
-  let updatedSchedule = schedule || { recurring: {}, onetime: {} };
+  let updatedSchedule = JSON.parse(JSON.stringify(schedule)) || { recurring: {}, onetime: {} };
 
   if (type === 'recurring') {
     updatedSchedule.recurring[day].splice(index, 1);
@@ -213,16 +213,38 @@ async function deleteEvent(type, index, day, date) {
 
   await chrome.storage.local.set({schedule: updatedSchedule});
   
-  // Trigger a network sync
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule}, async (response) => {
-      if (chrome.runtime.lastError) {
-        console.error('Error syncing schedule:', chrome.runtime.lastError);
-      } else if (response && response.status === 'success') {
-        console.log('Schedule successfully synced after deletion');
-      }
-      await updateScheduleDisplay();
-      resolve();
+  // Trigger a network sync with retry
+  const maxRetries = 3;
+  let retries = 0;
+  let syncSuccess = false;
+
+  while (retries < maxRetries && !syncSuccess) {
+    syncSuccess = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule}, async (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Error syncing schedule:', chrome.runtime.lastError);
+          resolve(false);
+        } else if (response && response.status === 'success') {
+          console.log('Schedule successfully synced after deletion');
+          resolve(true);
+        } else {
+          console.warn('Sync response unclear:', response);
+          resolve(false);
+        }
+      });
     });
-  });
+
+    if (!syncSuccess) {
+      console.log(`Sync attempt ${retries + 1} failed. Retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+      retries++;
+    }
+  }
+
+  if (!syncSuccess) {
+    console.error('Failed to sync schedule after multiple attempts');
+    alert('Failed to delete the event. Please try again later.');
+  } else {
+    await updateScheduleDisplay();
+  }
 }
