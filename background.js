@@ -10,7 +10,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
-chrome.alarms.create("cleanupTabs", { periodInMinutes: 15 }); // Cleanup every 15 minutes
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 5 }); // Cleanup every 5 minutes
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkSchedule") {
