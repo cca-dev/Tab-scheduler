@@ -9,8 +9,8 @@ chrome.webRequest.onBeforeRequest.addListener(
 );
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
-chrome.alarms.create("syncSchedule", { periodInMinutes: 1 }); // Sync every 5 minutes
-chrome.alarms.create("cleanupTabs", { periodInMinutes: 1 }); // Cleanup every 5 minutes
+chrome.alarms.create("syncSchedule", { periodInMinutes: 1 }); // Sync every minute
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 1 }); // Cleanup every minute
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkSchedule") {
@@ -29,8 +29,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // Keeps the message channel open for async sendResponse
   } else if (request.action === "updateSchedule") {
-    chrome.storage.local.set({ schedule: request.schedule }, async () => {
-      const syncResult = await syncScheduleWithNetwork();
+    syncScheduleWithNetwork().then(syncResult => {
       sendResponse({ status: syncResult ? 'success' : 'failure' });
     });
     return true; // Keeps the message channel open for async sendResponse
@@ -39,10 +38,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 async function syncScheduleWithNetwork() {
   try {
-    const { schedule } = await chrome.storage.local.get('schedule');
-    const writeSuccess = await writeScheduleToNetwork(schedule);
+    const response = await fetch(SHARED_FILE_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const networkSchedule = await response.json();
+    const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+    
+    const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
+    
+    await chrome.storage.local.set({ schedule: mergedSchedule });
+    const writeSuccess = await writeScheduleToNetwork(mergedSchedule);
     if (!writeSuccess) {
-      console.error('Failed to write schedule to network');
+      console.error('Failed to write merged schedule to network');
       return false;
     }
     return true;
@@ -52,48 +60,36 @@ async function syncScheduleWithNetwork() {
   }
 }
 
-async function writeScheduleToNetwork(schedule) {
-  console.log('Attempting to write schedule to network...');
-  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
-  try {
-    const response = await fetch(SHARED_FILE_URL, {
-      method: 'POST',
-      body: JSON.stringify(schedule),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+function mergeSchedules(localSchedule, networkSchedule) {
+  const mergedSchedule = { recurring: {}, onetime: {} };
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const responseText = await response.text();
-    console.log('Response from write operation:', responseText);
-
-    // Introduce a delay before verification
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Verify if the file was actually updated
-    const verificationResponse = await fetch(SHARED_FILE_URL);
-    const updatedContent = await verificationResponse.json();
-    console.log('Updated file content:', JSON.stringify(updatedContent, null, 2));
-
-    if (JSON.stringify(updatedContent) === JSON.stringify(schedule)) {
-      console.log('Schedule successfully written and verified on network');
-      return true;
-    } else {
-      console.warn('Write operation completed, but content verification failed');
-      console.log('Expected:', JSON.stringify(schedule, null, 2));
-      console.log('Actual:', JSON.stringify(updatedContent, null, 2));
-      return false;
-    }
-  } catch (error) {
-    console.error('Error writing schedule to network:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
-    return false;
+  // Merge recurring schedules
+  const allDays = [...new Set([...Object.keys(localSchedule.recurring || {}), ...Object.keys(networkSchedule.recurring || {})])];
+  for (const day of allDays) {
+    mergedSchedule.recurring[day] = mergeArrays(localSchedule.recurring?.[day] || [], networkSchedule.recurring?.[day] || []);
   }
+
+  // Merge one-time schedules
+  const allDates = [...new Set([...Object.keys(localSchedule.onetime || {}), ...Object.keys(networkSchedule.onetime || {})])];
+  for (const date of allDates) {
+    mergedSchedule.onetime[date] = mergeArrays(localSchedule.onetime?.[date] || [], networkSchedule.onetime?.[date] || []);
+  }
+
+  return mergedSchedule;
+}
+
+function mergeArrays(arr1, arr2) {
+  const merged = [...arr1];
+  for (const item of arr2) {
+    const existingIndex = merged.findIndex(e => e.id === item.id && e.time === item.time);
+    if (existingIndex === -1) {
+      merged.push(item);
+    } else {
+      // If the item already exists, use the most recent version
+      merged[existingIndex] = { ...merged[existingIndex], ...item };
+    }
+  }
+  return merged;
 }
 
 async function checkAndSwitchTabs() {
@@ -200,5 +196,49 @@ async function cleanupNonExistentTabs() {
   if (hasChanges) {
     await chrome.storage.local.set({schedule: updatedSchedule});
     await syncScheduleWithNetwork();
+  }
+}
+
+async function writeScheduleToNetwork(schedule) {
+  console.log('Attempting to write schedule to network...');
+  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
+  try {
+    const response = await fetch(SHARED_FILE_URL, {
+      method: 'POST',
+      body: JSON.stringify(schedule),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const responseText = await response.text();
+    console.log('Response from write operation:', responseText);
+
+    // Introduce a delay before verification
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Verify if the file was actually updated
+    const verificationResponse = await fetch(SHARED_FILE_URL);
+    const updatedContent = await verificationResponse.json();
+    console.log('Updated file content:', JSON.stringify(updatedContent, null, 2));
+
+    if (JSON.stringify(updatedContent) === JSON.stringify(schedule)) {
+      console.log('Schedule successfully written and verified on network');
+      return true;
+    } else {
+      console.warn('Write operation completed, but content verification failed');
+      console.log('Expected:', JSON.stringify(schedule, null, 2));
+      console.log('Actual:', JSON.stringify(updatedContent, null, 2));
+      return false;
+    }
+  } catch (error) {
+    console.error('Error writing schedule to network:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    return false;
   }
 }
