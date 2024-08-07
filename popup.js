@@ -117,7 +117,9 @@ async function addScheduleItem() {
   const tabSelect = document.getElementById('tabSelect');
   const selectedTabId = parseInt(tabSelect.value);
   const selectedTabTitle = tabSelect.options[tabSelect.selectedIndex].text;
-  const reload = document.getElementById('reloadCheckbox').checked;
+  
+  const reloadCheckbox = document.getElementById('reloadCheckbox');
+  const reload = reloadCheckbox ? reloadCheckbox.checked : false;
 
   const { schedule } = await chrome.storage.local.get('schedule');
   let updatedSchedule = schedule || { recurring: {}, onetime: {} };
@@ -149,6 +151,7 @@ async function addScheduleItem() {
   chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule});
   updateScheduleDisplay();
 }
+
 
 function addDeleteEventListeners() {
   const deleteButtons = document.querySelectorAll('.delete-btn');
