@@ -20,9 +20,15 @@ async function syncScheduleWithNetwork() {
     const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
     
     await chrome.storage.local.set({ schedule: mergedSchedule });
-    await writeScheduleToNetwork(mergedSchedule);
+    const writeSuccess = await writeScheduleToNetwork(mergedSchedule);
+    if (!writeSuccess) {
+      console.error('Failed to write merged schedule to network');
+      return false;
+    }
+    return true;
   } catch (error) {
-    console.error('Error syncing schedule with network:', error);
+    console.error('Error syncing schedule:', error);
+    return false;
   }
 }
 
@@ -238,7 +244,7 @@ async function updateReloadSetting(event) {
   const reload = event.target.checked;
 
   const { schedule } = await chrome.storage.local.get('schedule');
-  let updatedSchedule = schedule;
+  let updatedSchedule = JSON.parse(JSON.stringify(schedule));
 
   if (type === 'recurring') {
     updatedSchedule.recurring[day][index].reload = reload;
@@ -247,7 +253,12 @@ async function updateReloadSetting(event) {
   }
 
   await chrome.storage.local.set({schedule: updatedSchedule});
-  await syncScheduleWithNetwork();
+  const syncSuccess = await syncScheduleWithNetwork();
+  
+  if (!syncSuccess) {
+    console.error('Failed to sync schedule with network');
+    // Optionally, you can show an error message to the user here
+  }
 }
 
 async function deleteEvent(type, index, day, date) {
@@ -267,8 +278,14 @@ async function deleteEvent(type, index, day, date) {
   }
 
   await chrome.storage.local.set({schedule: updatedSchedule});
-  await syncScheduleWithNetwork();
-  await updateScheduleDisplay();
+  const syncSuccess = await syncScheduleWithNetwork();
+  
+  if (syncSuccess) {
+    await updateScheduleDisplay();
+  } else {
+    console.error('Failed to sync schedule with network');
+    // Optionally, you can show an error message to the user here
+  }
 }
 
 async function writeScheduleToNetwork(schedule) {
