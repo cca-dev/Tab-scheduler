@@ -15,8 +15,7 @@
     "https://ccc.local:44300/*"
   ],
   "background": {
-    "service_worker": "background.js",
-    "persistent": false
+    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html"
