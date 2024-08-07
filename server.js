@@ -38,10 +38,11 @@ app.post('/tab_schedule.json', (req, res) => {
 
 // HTTPS options - using self-signed certificates for local testing
 const httpsOptions = {
-    key: fs.readFileSync(path.join(__dirname, 'key.pem')),
-    cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
-  };
+  key: fs.readFileSync(path.join(__dirname, 'key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
+};
 
-https.createServer(httpsOptions, app).listen(PORT, 'localhost', () => {
-  console.log(`Server running at https://localhost:${PORT}`);
+// Replace 'localhost' with '0.0.0.0' to listen on all network interfaces
+https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running at https://ccc.local:${PORT}`);
 });

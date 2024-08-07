@@ -1,4 +1,4 @@
-const SHARED_FILE_URL = 'https://localhost:44300/tab_schedule.json';
+const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
 // Log all network requests (for debugging)
 chrome.webRequest.onBeforeRequest.addListener(

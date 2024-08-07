@@ -10,15 +10,18 @@
     "webRequest"
   ],
   "host_permissions": [
-    "https://*/*"
+    "https://*/*",
+    "http://ccc.local:44300/*",
+    "https://ccc.local:44300/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "persistent": false
   },
   "action": {
     "default_popup": "popup.html"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://localhost:44300"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://ccc.local:44300"
   }
 }
