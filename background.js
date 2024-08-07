@@ -10,12 +10,17 @@ chrome.webRequest.onBeforeRequest.addListener(
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
+// Create a new alarm for cleanup
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 30 }); // Run every half hour
 
+// Add this to your existing alarm listeners
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkSchedule") {
     checkAndSwitchTabs();
   } else if (alarm.name === "syncSchedule") {
     syncScheduleWithNetwork();
+  } else if (alarm.name === "cleanupTabs") {
+    cleanupNonExistentTabs();
   }
 });
 
@@ -185,5 +190,45 @@ async function switchToTab(tabInfo) {
     } else {
       console.log('No matching tab found');
     }
+  }
+}
+
+async function cleanupNonExistentTabs() {
+  const { schedule } = await chrome.storage.local.get('schedule');
+  let updatedSchedule = { recurring: {}, onetime: {} };
+  let hasChanges = false;
+
+  const allTabs = await chrome.tabs.query({});
+  const existingTabIds = new Set(allTabs.map(tab => tab.id));
+
+  for (const day in schedule.recurring) {
+    updatedSchedule.recurring[day] = schedule.recurring[day].filter(item => {
+      if (existingTabIds.has(parseInt(item.id))) {
+        return true;
+      }
+      hasChanges = true;
+      return false;
+    });
+    if (updatedSchedule.recurring[day].length === 0) {
+      delete updatedSchedule.recurring[day];
+    }
+  }
+
+  for (const date in schedule.onetime) {
+    updatedSchedule.onetime[date] = schedule.onetime[date].filter(item => {
+      if (existingTabIds.has(parseInt(item.id))) {
+        return true;
+      }
+      hasChanges = true;
+      return false;
+    });
+    if (updatedSchedule.onetime[date].length === 0) {
+      delete updatedSchedule.onetime[date];
+    }
+  }
+
+  if (hasChanges) {
+    await chrome.storage.local.set({schedule: updatedSchedule});
+    await syncScheduleWithNetwork();
   }
 }

@@ -45,12 +45,12 @@ function setupEventListeners() {
 
 async function getFavicon(tabId) {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({action: "getFavicon", tabId: tabId}, (response) => {
+    chrome.tabs.get(parseInt(tabId), (tab) => {
       if (chrome.runtime.lastError) {
-        console.log(chrome.runtime.lastError.message);
+        console.log(`Tab ${tabId} not found:`, chrome.runtime.lastError.message);
         resolve('default_favicon.png');
       } else {
-        resolve(response && response.favIconUrl ? response.favIconUrl : 'default_favicon.png');
+        resolve(tab.favIconUrl || 'default_favicon.png');
       }
     });
   });
@@ -205,6 +205,14 @@ async function deleteEvent(type, index, day, date) {
   }
 
   await chrome.storage.local.set({schedule: updatedSchedule});
-  chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule});
-  updateScheduleDisplay();
+  
+  // Trigger a network sync
+  chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule}, async (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('Error syncing schedule:', chrome.runtime.lastError);
+    } else if (response && response.status === 'success') {
+      console.log('Schedule successfully synced after deletion');
+    }
+    await updateScheduleDisplay();
+  });
 }
