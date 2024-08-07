@@ -9,22 +9,30 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function syncScheduleWithNetwork() {
+  console.log('Starting syncScheduleWithNetwork');
   try {
     const response = await fetch(SHARED_FILE_URL);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const networkSchedule = await response.json();
+    console.log('Network schedule:', networkSchedule);
+
     const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+    console.log('Local schedule:', localSchedule);
     
     const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
+    console.log('Merged schedule:', mergedSchedule);
     
     await chrome.storage.local.set({ schedule: mergedSchedule });
+    console.log('Local storage updated with merged schedule');
+
     const writeSuccess = await writeScheduleToNetwork(mergedSchedule);
     if (!writeSuccess) {
       console.error('Failed to write merged schedule to network');
       return false;
     }
+    console.log('Successfully synced schedule with network');
     return true;
   } catch (error) {
     console.error('Error syncing schedule:', error);
@@ -237,13 +245,16 @@ function addReloadCheckboxListeners() {
 }
 
 async function updateReloadSetting(event) {
+  console.log('Starting updateReloadSetting');
   const type = event.target.dataset.type;
   const index = parseInt(event.target.dataset.index);
   const day = event.target.dataset.day;
   const date = event.target.dataset.date;
   const reload = event.target.checked;
+  console.log('Update details:', { type, index, day, date, reload });
 
   const { schedule } = await chrome.storage.local.get('schedule');
+  console.log('Current schedule:', schedule);
   let updatedSchedule = JSON.parse(JSON.stringify(schedule));
 
   if (type === 'recurring') {
@@ -251,18 +262,27 @@ async function updateReloadSetting(event) {
   } else if (type === 'onetime') {
     updatedSchedule.onetime[date][index].reload = reload;
   }
+  console.log('Updated schedule:', updatedSchedule);
 
   await chrome.storage.local.set({schedule: updatedSchedule});
+  console.log('Local storage updated');
+
   const syncSuccess = await syncScheduleWithNetwork();
   
   if (!syncSuccess) {
     console.error('Failed to sync schedule with network');
     // Optionally, you can show an error message to the user here
+  } else {
+    console.log('Successfully synced schedule with network');
   }
 }
 
 async function deleteEvent(type, index, day, date) {
+  console.log('Starting deleteEvent');
+  console.log('Delete details:', { type, index, day, date });
+
   const { schedule } = await chrome.storage.local.get('schedule');
+  console.log('Current schedule:', schedule);
   let updatedSchedule = JSON.parse(JSON.stringify(schedule)) || { recurring: {}, onetime: {} };
 
   if (type === 'recurring') {
@@ -276,11 +296,15 @@ async function deleteEvent(type, index, day, date) {
       delete updatedSchedule.onetime[date];
     }
   }
+  console.log('Updated schedule:', updatedSchedule);
 
   await chrome.storage.local.set({schedule: updatedSchedule});
+  console.log('Local storage updated');
+
   const syncSuccess = await syncScheduleWithNetwork();
   
   if (syncSuccess) {
+    console.log('Successfully synced schedule with network');
     await updateScheduleDisplay();
   } else {
     console.error('Failed to sync schedule with network');
@@ -289,7 +313,7 @@ async function deleteEvent(type, index, day, date) {
 }
 
 async function writeScheduleToNetwork(schedule) {
-  console.log('Attempting to write schedule to network...');
+  console.log('Starting writeScheduleToNetwork');
   console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
@@ -308,9 +332,11 @@ async function writeScheduleToNetwork(schedule) {
     console.log('Response from write operation:', responseText);
 
     // Introduce a delay before verification
+    console.log('Waiting 2 seconds before verification...');
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Verify if the file was actually updated
+    console.log('Verifying update...');
     const verificationResponse = await fetch(SHARED_FILE_URL);
     const updatedContent = await verificationResponse.json();
     console.log('Updated file content:', JSON.stringify(updatedContent, null, 2));
