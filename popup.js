@@ -117,24 +117,31 @@ async function addScheduleItem() {
   const tabSelect = document.getElementById('tabSelect');
   const selectedTabId = parseInt(tabSelect.value);
   const selectedTabTitle = tabSelect.options[tabSelect.selectedIndex].text;
+  const reload = document.getElementById('reloadCheckbox').checked;
 
   const { schedule } = await chrome.storage.local.get('schedule');
-  let updatedSchedule = schedule || {};
-  if (!updatedSchedule.recurring) updatedSchedule.recurring = {};
-  if (!updatedSchedule.onetime) updatedSchedule.onetime = {};
+  let updatedSchedule = schedule || { recurring: {}, onetime: {} };
 
   const scheduleItem = {
     id: selectedTabId,
     title: selectedTabTitle,
     time: time,
-    reload: false
+    reload: reload
   };
 
   if (scheduleType === 'recurring') {
     if (!updatedSchedule.recurring[day]) updatedSchedule.recurring[day] = [];
+    // Remove any existing entries for this tab at this time
+    updatedSchedule.recurring[day] = updatedSchedule.recurring[day].filter(item => 
+      item.id !== selectedTabId || item.time !== time
+    );
     updatedSchedule.recurring[day].push(scheduleItem);
   } else {
     if (!updatedSchedule.onetime[date]) updatedSchedule.onetime[date] = [];
+    // Remove any existing entries for this tab at this time
+    updatedSchedule.onetime[date] = updatedSchedule.onetime[date].filter(item => 
+      item.id !== selectedTabId || item.time !== time
+    );
     updatedSchedule.onetime[date].push(scheduleItem);
   }
 
@@ -207,12 +214,15 @@ async function deleteEvent(type, index, day, date) {
   await chrome.storage.local.set({schedule: updatedSchedule});
   
   // Trigger a network sync
-  chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule}, async (response) => {
-    if (chrome.runtime.lastError) {
-      console.error('Error syncing schedule:', chrome.runtime.lastError);
-    } else if (response && response.status === 'success') {
-      console.log('Schedule successfully synced after deletion');
-    }
-    await updateScheduleDisplay();
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({action: 'updateSchedule', schedule: updatedSchedule}, async (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error syncing schedule:', chrome.runtime.lastError);
+      } else if (response && response.status === 'success') {
+        console.log('Schedule successfully synced after deletion');
+      }
+      await updateScheduleDisplay();
+      resolve();
+    });
   });
 }

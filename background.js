@@ -10,8 +10,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
 chrome.alarms.create("syncSchedule", { periodInMinutes: 5 }); // Sync every 5 minutes
-// Create a new alarm for cleanup
-chrome.alarms.create("cleanupTabs", { periodInMinutes: 6 }); // Run every 6 minutes
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 15 }); // Run every 15 minutes
 
 // Add this to your existing alarm listeners
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -206,6 +205,7 @@ async function cleanupNonExistentTabs() {
       if (existingTabIds.has(parseInt(item.id))) {
         return true;
       }
+      console.log(`Removing non-existent tab ${item.id} from recurring schedule for ${day}`);
       hasChanges = true;
       return false;
     });
@@ -219,6 +219,7 @@ async function cleanupNonExistentTabs() {
       if (existingTabIds.has(parseInt(item.id))) {
         return true;
       }
+      console.log(`Removing non-existent tab ${item.id} from one-time schedule for ${date}`);
       hasChanges = true;
       return false;
     });
