@@ -41,6 +41,10 @@ async function syncScheduleWithNetwork() {
 }
 
 function mergeSchedules(localSchedule, networkSchedule) {
+  console.log('Merging schedules');
+  console.log('Local schedule:', JSON.stringify(localSchedule, null, 2));
+  console.log('Network schedule:', JSON.stringify(networkSchedule, null, 2));
+
   const mergedSchedule = { recurring: {}, onetime: {} };
 
   // Merge recurring schedules
@@ -55,6 +59,7 @@ function mergeSchedules(localSchedule, networkSchedule) {
     mergedSchedule.onetime[date] = mergeArrays(localSchedule.onetime?.[date] || [], networkSchedule.onetime?.[date] || []);
   }
 
+  console.log('Merged schedule:', JSON.stringify(mergedSchedule, null, 2));
   return mergedSchedule;
 }
 
@@ -254,15 +259,19 @@ async function updateReloadSetting(event) {
   console.log('Update details:', { type, index, day, date, reload });
 
   const { schedule } = await chrome.storage.local.get('schedule');
-  console.log('Current schedule:', schedule);
+  console.log('Current schedule:', JSON.stringify(schedule, null, 2));
   let updatedSchedule = JSON.parse(JSON.stringify(schedule));
 
-  if (type === 'recurring') {
-    updatedSchedule.recurring[day][index].reload = reload;
-  } else if (type === 'onetime') {
-    updatedSchedule.onetime[date][index].reload = reload;
+  if (type === 'recurring' && day && updatedSchedule.recurring[day]) {
+    if (updatedSchedule.recurring[day][index]) {
+      updatedSchedule.recurring[day][index].reload = reload;
+    }
+  } else if (type === 'onetime' && date && updatedSchedule.onetime[date]) {
+    if (updatedSchedule.onetime[date][index]) {
+      updatedSchedule.onetime[date][index].reload = reload;
+    }
   }
-  console.log('Updated schedule:', updatedSchedule);
+  console.log('Updated schedule:', JSON.stringify(updatedSchedule, null, 2));
 
   await chrome.storage.local.set({schedule: updatedSchedule});
   console.log('Local storage updated');
