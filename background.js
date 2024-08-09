@@ -37,22 +37,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function syncScheduleWithNetwork() {
+  console.log('Starting syncScheduleWithNetwork');
   try {
     const response = await fetch(SHARED_FILE_URL);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const networkSchedule = await response.json();
+    console.log('Network schedule:', JSON.stringify(networkSchedule, null, 2));
+
     const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+    console.log('Local schedule:', JSON.stringify(localSchedule, null, 2));
     
-    const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
+    let mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
+    console.log('Merged schedule:', JSON.stringify(mergedSchedule, null, 2));
     
+    // Clean up the merged schedule
+    mergedSchedule = await cleanupSchedule(mergedSchedule);
+    console.log('Cleaned merged schedule:', JSON.stringify(mergedSchedule, null, 2));
+
     await chrome.storage.local.set({ schedule: mergedSchedule });
+    console.log('Local storage updated with cleaned merged schedule');
+
     const writeSuccess = await writeScheduleToNetwork(mergedSchedule);
     if (!writeSuccess) {
       console.error('Failed to write merged schedule to network');
       return false;
     }
+    console.log('Successfully synced schedule with network');
     return true;
   } catch (error) {
     console.error('Error syncing schedule:', error);

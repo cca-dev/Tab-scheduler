@@ -1,6 +1,10 @@
 const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
 document.addEventListener('DOMContentLoaded', async function() {
+  const { schedule } = await chrome.storage.local.get('schedule');
+  const cleanedSchedule = await cleanupSchedule(schedule);
+  await chrome.storage.local.set({ schedule: cleanedSchedule });
+  
   await syncScheduleWithNetwork();
   await populateTabDropdown();
   await cleanupPastEvents();
@@ -21,11 +25,15 @@ async function syncScheduleWithNetwork() {
     const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
     console.log('Local schedule:', JSON.stringify(localSchedule, null, 2));
     
-    const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
+    let mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
     console.log('Merged schedule:', JSON.stringify(mergedSchedule, null, 2));
     
+    // Clean up the merged schedule
+    mergedSchedule = await cleanupSchedule(mergedSchedule);
+    console.log('Cleaned merged schedule:', JSON.stringify(mergedSchedule, null, 2));
+
     await chrome.storage.local.set({ schedule: mergedSchedule });
-    console.log('Local storage updated with merged schedule');
+    console.log('Local storage updated with cleaned merged schedule');
 
     const writeSuccess = await writeScheduleToNetwork(mergedSchedule);
     if (!writeSuccess) {
@@ -130,12 +138,17 @@ async function getFavicon(tabId) {
 
 async function updateScheduleDisplay() {
   const { schedule } = await chrome.storage.local.get('schedule');
+  let cleanedSchedule = await cleanupSchedule(schedule);
+  
+  // Update local storage with cleaned schedule
+  await chrome.storage.local.set({ schedule: cleanedSchedule });
+
   let displayHtml = '<h3>Current Schedule:</h3>';
 
   displayHtml += '<h4>Recurring Events:</h4>';
-  for (let day in schedule.recurring) {
+  for (let day in cleanedSchedule.recurring) {
     displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
-    for (const item of schedule.recurring[day]) {
+    for (const item of cleanedSchedule.recurring[day]) {
       const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
       displayHtml += `<div class="event-item">
         <img src="${faviconUrl}" class="favicon" alt="Favicon">
@@ -143,10 +156,10 @@ async function updateScheduleDisplay() {
         <label class="reload-label">
           <input type="checkbox" class="reload-checkbox" 
                  ${item.reload ? 'checked' : ''}
-                 data-type="recurring" data-day="${day}" data-index="${schedule.recurring[day].indexOf(item)}">
+                 data-type="recurring" data-day="${day}" data-index="${cleanedSchedule.recurring[day].indexOf(item)}">
           Reload
         </label>
-        <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${schedule.recurring[day].indexOf(item)}">&times;</span>
+        <span class="delete-btn" data-type="recurring" data-day="${day}" data-index="${cleanedSchedule.recurring[day].indexOf(item)}">&times;</span>
       </div>`;
     }
   }
@@ -154,12 +167,12 @@ async function updateScheduleDisplay() {
   displayHtml += '<h4>One-time Events:</h4>';
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const sortedDates = Object.keys(schedule.onetime).sort();
+  const sortedDates = Object.keys(cleanedSchedule.onetime).sort();
 
   for (let date of sortedDates) {
     if (new Date(date) >= today) {
       displayHtml += `<strong>${date}:</strong><br>`;
-      for (const item of schedule.onetime[date]) {
+      for (const item of cleanedSchedule.onetime[date]) {
         const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
         displayHtml += `<div class="event-item">
           <img src="${faviconUrl}" class="favicon" alt="Favicon">
@@ -167,10 +180,10 @@ async function updateScheduleDisplay() {
           <label class="reload-label">
             <input type="checkbox" class="reload-checkbox" 
                    ${item.reload ? 'checked' : ''}
-                   data-type="onetime" data-date="${date}" data-index="${schedule.onetime[date].indexOf(item)}">
+                   data-type="onetime" data-date="${date}" data-index="${cleanedSchedule.onetime[date].indexOf(item)}">
             Reload
           </label>
-          <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${schedule.onetime[date].indexOf(item)}">&times;</span>
+          <span class="delete-btn" data-type="onetime" data-date="${date}" data-index="${cleanedSchedule.onetime[date].indexOf(item)}">&times;</span>
         </div>`;
       }
     }
@@ -179,6 +192,9 @@ async function updateScheduleDisplay() {
   document.getElementById('currentSchedule').innerHTML = displayHtml;
   addDeleteEventListeners();
   addReloadCheckboxListeners();
+
+  // Sync the cleaned schedule with the network
+  await syncScheduleWithNetwork();
 }
 
 async function addScheduleItem() {
@@ -328,7 +344,7 @@ async function deleteEvent(type, index, day, date) {
     }
   }
 
-  // Cleanup missing tabs
+  // Cleanup missing tabs and empty dates
   updatedSchedule = await cleanupSchedule(updatedSchedule);
 
   console.log('Updated schedule:', updatedSchedule);
@@ -417,13 +433,6 @@ async function cleanupSchedule(schedule) {
 
   for (const date in schedule.onetime) {
     cleanSchedule.onetime[date] = schedule.onetime[date].filter(item => existingTabIds.has(parseInt(item.id)));
-    if (cleanSchedule.onetime[date].length === 0) {
-      delete cleanSchedule.onetime[date];
-    }
-  }
-
-  // Remove empty date entries from onetime schedule
-  for (const date in cleanSchedule.onetime) {
     if (cleanSchedule.onetime[date].length === 0) {
       delete cleanSchedule.onetime[date];
     }
