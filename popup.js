@@ -16,13 +16,13 @@ async function syncScheduleWithNetwork() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const networkSchedule = await response.json();
-    console.log('Network schedule:', networkSchedule);
+    console.log('Network schedule:', JSON.stringify(networkSchedule, null, 2));
 
     const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
-    console.log('Local schedule:', localSchedule);
+    console.log('Local schedule:', JSON.stringify(localSchedule, null, 2));
     
     const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
-    console.log('Merged schedule:', mergedSchedule);
+    console.log('Merged schedule:', JSON.stringify(mergedSchedule, null, 2));
     
     await chrome.storage.local.set({ schedule: mergedSchedule });
     console.log('Local storage updated with merged schedule');
@@ -258,31 +258,46 @@ async function updateReloadSetting(event) {
   const reload = event.target.checked;
   console.log('Update details:', { type, index, day, date, reload });
 
-  const { schedule } = await chrome.storage.local.get('schedule');
-  console.log('Current schedule:', JSON.stringify(schedule, null, 2));
-  let updatedSchedule = JSON.parse(JSON.stringify(schedule));
+  try {
+    const { schedule } = await chrome.storage.local.get('schedule');
+    console.log('Current schedule:', JSON.stringify(schedule, null, 2));
+    let updatedSchedule = JSON.parse(JSON.stringify(schedule));
 
-  if (type === 'recurring' && day && updatedSchedule.recurring[day]) {
-    if (updatedSchedule.recurring[day][index]) {
-      updatedSchedule.recurring[day][index].reload = reload;
+    if (type === 'recurring' && day && updatedSchedule.recurring[day]) {
+      if (updatedSchedule.recurring[day][index]) {
+        console.log(`Updating recurring event for ${day} at index ${index}`);
+        updatedSchedule.recurring[day][index].reload = reload;
+      } else {
+        console.error(`Invalid index ${index} for recurring events on ${day}`);
+      }
+    } else if (type === 'onetime' && date && updatedSchedule.onetime[date]) {
+      if (updatedSchedule.onetime[date][index]) {
+        console.log(`Updating one-time event for ${date} at index ${index}`);
+        updatedSchedule.onetime[date][index].reload = reload;
+      } else {
+        console.error(`Invalid index ${index} for one-time events on ${date}`);
+      }
+    } else {
+      console.error('Invalid type or missing day/date');
     }
-  } else if (type === 'onetime' && date && updatedSchedule.onetime[date]) {
-    if (updatedSchedule.onetime[date][index]) {
-      updatedSchedule.onetime[date][index].reload = reload;
+
+    console.log('Updated schedule:', JSON.stringify(updatedSchedule, null, 2));
+
+    await chrome.storage.local.set({schedule: updatedSchedule});
+    console.log('Local storage updated');
+
+    const syncSuccess = await syncScheduleWithNetwork();
+    
+    if (!syncSuccess) {
+      console.error('Failed to sync schedule with network');
+    } else {
+      console.log('Successfully synced schedule with network');
     }
-  }
-  console.log('Updated schedule:', JSON.stringify(updatedSchedule, null, 2));
 
-  await chrome.storage.local.set({schedule: updatedSchedule});
-  console.log('Local storage updated');
-
-  const syncSuccess = await syncScheduleWithNetwork();
-  
-  if (!syncSuccess) {
-    console.error('Failed to sync schedule with network');
-    // Optionally, you can show an error message to the user here
-  } else {
-    console.log('Successfully synced schedule with network');
+    // Force a refresh of the display
+    await updateScheduleDisplay();
+  } catch (error) {
+    console.error('Error in updateReloadSetting:', error);
   }
 }
 
@@ -347,10 +362,16 @@ async function writeScheduleToNetwork(schedule) {
     // Verify if the file was actually updated
     console.log('Verifying update...');
     const verificationResponse = await fetch(SHARED_FILE_URL);
+    if (!verificationResponse.ok) {
+      throw new Error(`HTTP error during verification! status: ${verificationResponse.status}`);
+    }
     const updatedContent = await verificationResponse.json();
     console.log('Updated file content:', JSON.stringify(updatedContent, null, 2));
 
-    if (JSON.stringify(updatedContent) === JSON.stringify(schedule)) {
+    const isEqual = JSON.stringify(updatedContent) === JSON.stringify(schedule);
+    console.log('Verification result:', isEqual ? 'Success' : 'Failure');
+
+    if (isEqual) {
       console.log('Schedule successfully written and verified on network');
       return true;
     } else {
