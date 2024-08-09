@@ -420,19 +420,24 @@ async function writeScheduleToNetwork(schedule) {
 }
 
 async function cleanupSchedule(schedule) {
+  if (!schedule || (Object.keys(schedule.recurring || {}).length === 0 && Object.keys(schedule.onetime || {}).length === 0)) {
+    console.log('Schedule is empty or undefined, returning empty schedule');
+    return { recurring: {}, onetime: {} };
+  }
+
   const cleanSchedule = { recurring: {}, onetime: {} };
   const allTabs = await chrome.tabs.query({});
   const existingTabIds = new Set(allTabs.map(tab => tab.id));
 
-  for (const day in schedule.recurring) {
-    cleanSchedule.recurring[day] = schedule.recurring[day].filter(item => existingTabIds.has(parseInt(item.id)));
+  for (const day in schedule.recurring || {}) {
+    cleanSchedule.recurring[day] = (schedule.recurring[day] || []).filter(item => existingTabIds.has(parseInt(item.id)));
     if (cleanSchedule.recurring[day].length === 0) {
       delete cleanSchedule.recurring[day];
     }
   }
 
-  for (const date in schedule.onetime) {
-    cleanSchedule.onetime[date] = schedule.onetime[date].filter(item => existingTabIds.has(parseInt(item.id)));
+  for (const date in schedule.onetime || {}) {
+    cleanSchedule.onetime[date] = (schedule.onetime[date] || []).filter(item => existingTabIds.has(parseInt(item.id)));
     if (cleanSchedule.onetime[date].length === 0) {
       delete cleanSchedule.onetime[date];
     }
