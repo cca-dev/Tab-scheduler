@@ -263,22 +263,29 @@ async function updateReloadSetting(event) {
     console.log('Current schedule:', JSON.stringify(schedule, null, 2));
     let updatedSchedule = JSON.parse(JSON.stringify(schedule));
 
+    let tabToUpdate;
     if (type === 'recurring' && day && updatedSchedule.recurring[day]) {
-      if (updatedSchedule.recurring[day][index]) {
-        console.log(`Updating recurring event for ${day} at index ${index}`);
-        updatedSchedule.recurring[day][index].reload = reload;
-      } else {
-        console.error(`Invalid index ${index} for recurring events on ${day}`);
-      }
+      tabToUpdate = updatedSchedule.recurring[day][index];
     } else if (type === 'onetime' && date && updatedSchedule.onetime[date]) {
-      if (updatedSchedule.onetime[date][index]) {
-        console.log(`Updating one-time event for ${date} at index ${index}`);
-        updatedSchedule.onetime[date][index].reload = reload;
-      } else {
-        console.error(`Invalid index ${index} for one-time events on ${date}`);
+      tabToUpdate = updatedSchedule.onetime[date][index];
+    }
+
+    if (tabToUpdate) {
+      // Check if the tab still exists
+      try {
+        await chrome.tabs.get(parseInt(tabToUpdate.id));
+        tabToUpdate.reload = reload;
+        console.log(`Updated ${type} event for ${day || date} at index ${index}`);
+      } catch (error) {
+        console.error(`Tab ${tabToUpdate.id} no longer exists. Removing from schedule.`);
+        if (type === 'recurring') {
+          updatedSchedule.recurring[day].splice(index, 1);
+        } else {
+          updatedSchedule.onetime[date].splice(index, 1);
+        }
       }
     } else {
-      console.error('Invalid type or missing day/date');
+      console.error('Invalid type or missing day/date, or index out of bounds');
     }
 
     console.log('Updated schedule:', JSON.stringify(updatedSchedule, null, 2));
@@ -338,11 +345,15 @@ async function deleteEvent(type, index, day, date) {
 
 async function writeScheduleToNetwork(schedule) {
   console.log('Starting writeScheduleToNetwork');
-  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
+  
+  // Cleanup non-existent tabs before writing
+  const cleanSchedule = await cleanupSchedule(schedule);
+  
+  console.log('Cleaned schedule to write:', JSON.stringify(cleanSchedule, null, 2));
   try {
     const response = await fetch(SHARED_FILE_URL, {
       method: 'POST',
-      body: JSON.stringify(schedule),
+      body: JSON.stringify(cleanSchedule),
       headers: {
         'Content-Type': 'application/json'
       }
@@ -368,7 +379,7 @@ async function writeScheduleToNetwork(schedule) {
     const updatedContent = await verificationResponse.json();
     console.log('Updated file content:', JSON.stringify(updatedContent, null, 2));
 
-    const isEqual = JSON.stringify(updatedContent) === JSON.stringify(schedule);
+    const isEqual = JSON.stringify(updatedContent) === JSON.stringify(cleanSchedule);
     console.log('Verification result:', isEqual ? 'Success' : 'Failure');
 
     if (isEqual) {
@@ -376,7 +387,7 @@ async function writeScheduleToNetwork(schedule) {
       return true;
     } else {
       console.warn('Write operation completed, but content verification failed');
-      console.log('Expected:', JSON.stringify(schedule, null, 2));
+      console.log('Expected:', JSON.stringify(cleanSchedule, null, 2));
       console.log('Actual:', JSON.stringify(updatedContent, null, 2));
       return false;
     }
@@ -386,4 +397,26 @@ async function writeScheduleToNetwork(schedule) {
     console.error('Error stack:', error.stack);
     return false;
   }
+}
+
+async function cleanupSchedule(schedule) {
+  const cleanSchedule = { recurring: {}, onetime: {} };
+  const allTabs = await chrome.tabs.query({});
+  const existingTabIds = new Set(allTabs.map(tab => tab.id));
+
+  for (const day in schedule.recurring) {
+    cleanSchedule.recurring[day] = schedule.recurring[day].filter(item => existingTabIds.has(parseInt(item.id)));
+    if (cleanSchedule.recurring[day].length === 0) {
+      delete cleanSchedule.recurring[day];
+    }
+  }
+
+  for (const date in schedule.onetime) {
+    cleanSchedule.onetime[date] = schedule.onetime[date].filter(item => existingTabIds.has(parseInt(item.id)));
+    if (cleanSchedule.onetime[date].length === 0) {
+      delete cleanSchedule.onetime[date];
+    }
+  }
+
+  return cleanSchedule;
 }

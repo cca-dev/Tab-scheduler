@@ -158,6 +158,7 @@ async function switchToTab(tabInfo) {
 }
 
 async function cleanupNonExistentTabs() {
+  console.log('Starting cleanupNonExistentTabs');
   const { schedule } = await chrome.storage.local.get('schedule');
   let updatedSchedule = { recurring: {}, onetime: {} };
   let hasChanges = false;
@@ -166,28 +167,32 @@ async function cleanupNonExistentTabs() {
   const existingTabIds = new Set(allTabs.map(tab => tab.id));
 
   for (const day in schedule.recurring) {
-    updatedSchedule.recurring[day] = schedule.recurring[day].filter(item => {
-      if (existingTabIds.has(parseInt(item.id))) {
+    updatedSchedule.recurring[day] = await Promise.all(schedule.recurring[day].filter(async (item) => {
+      try {
+        await chrome.tabs.get(parseInt(item.id));
         return true;
+      } catch (error) {
+        console.log(`Removing non-existent tab ${item.id} from recurring schedule for ${day}`);
+        hasChanges = true;
+        return false;
       }
-      console.log(`Removing non-existent tab ${item.id} from recurring schedule for ${day}`);
-      hasChanges = true;
-      return false;
-    });
+    }));
     if (updatedSchedule.recurring[day].length === 0) {
       delete updatedSchedule.recurring[day];
     }
   }
 
   for (const date in schedule.onetime) {
-    updatedSchedule.onetime[date] = schedule.onetime[date].filter(item => {
-      if (existingTabIds.has(parseInt(item.id))) {
+    updatedSchedule.onetime[date] = await Promise.all(schedule.onetime[date].filter(async (item) => {
+      try {
+        await chrome.tabs.get(parseInt(item.id));
         return true;
+      } catch (error) {
+        console.log(`Removing non-existent tab ${item.id} from one-time schedule for ${date}`);
+        hasChanges = true;
+        return false;
       }
-      console.log(`Removing non-existent tab ${item.id} from one-time schedule for ${date}`);
-      hasChanges = true;
-      return false;
-    });
+    }));
     if (updatedSchedule.onetime[date].length === 0) {
       delete updatedSchedule.onetime[date];
     }
@@ -197,7 +202,12 @@ async function cleanupNonExistentTabs() {
     await chrome.storage.local.set({schedule: updatedSchedule});
     await syncScheduleWithNetwork();
   }
+  
+  console.log('Finished cleanupNonExistentTabs');
 }
+
+// Run cleanup every 30 seconds
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 0.5 });
 
 async function writeScheduleToNetwork(schedule) {
   console.log('Attempting to write schedule to network...');
