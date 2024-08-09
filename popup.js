@@ -327,6 +327,10 @@ async function deleteEvent(type, index, day, date) {
       delete updatedSchedule.onetime[date];
     }
   }
+
+  // Cleanup missing tabs
+  updatedSchedule = await cleanupSchedule(updatedSchedule);
+
   console.log('Updated schedule:', updatedSchedule);
 
   await chrome.storage.local.set({schedule: updatedSchedule});
@@ -413,6 +417,13 @@ async function cleanupSchedule(schedule) {
 
   for (const date in schedule.onetime) {
     cleanSchedule.onetime[date] = schedule.onetime[date].filter(item => existingTabIds.has(parseInt(item.id)));
+    if (cleanSchedule.onetime[date].length === 0) {
+      delete cleanSchedule.onetime[date];
+    }
+  }
+
+  // Remove empty date entries from onetime schedule
+  for (const date in cleanSchedule.onetime) {
     if (cleanSchedule.onetime[date].length === 0) {
       delete cleanSchedule.onetime[date];
     }
