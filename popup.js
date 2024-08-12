@@ -105,9 +105,9 @@ async function updateScheduleDisplay() {
           <img src="${faviconUrl}" class="favicon" alt="Favicon">
           <span class="tab-title">${item.title}</span>
           <label class="reload-label">
-            <input type="checkbox" ${item.reload ? 'checked' : ''} onchange="updateReloadSetting(this, '${item.id}', '${day}', 'recurring')"> Reload
+            <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
           </label>
-          <button class="remove-item" onclick="removeScheduleItem('${item.id}', '${day}', 'recurring')">X</button>
+          <button class="remove-item">X</button>
         </div>`;
       }
     }
@@ -120,17 +120,40 @@ async function updateScheduleDisplay() {
           <img src="${faviconUrl}" class="favicon" alt="Favicon">
           <span class="tab-title">${item.title}</span>
           <label class="reload-label">
-            <input type="checkbox" ${item.reload ? 'checked' : ''} onchange="updateReloadSetting(this, '${item.id}', '${date}', 'onetime')"> Reload
+            <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
           </label>
-          <button class="remove-item" onclick="removeScheduleItem('${item.id}', '${date}', 'onetime')">X</button>
+          <button class="remove-item">X</button>
         </div>`;
       }
     }
     document.getElementById('currentSchedule').innerHTML = displayHtml;
+
+    // Add event listeners for dynamically created elements
+    document.querySelectorAll('.reload-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        const eventItem = checkbox.closest('.event-item');
+        const id = eventItem.getAttribute('data-id');
+        const dateOrDay = eventItem.getAttribute('data-day') || eventItem.getAttribute('data-date');
+        const type = eventItem.getAttribute('data-type');
+        updateReloadSetting(checkbox, id, dateOrDay, type);
+      });
+    });
+
+    document.querySelectorAll('.remove-item').forEach(button => {
+      button.addEventListener('click', function() {
+        const eventItem = button.closest('.event-item');
+        const id = eventItem.getAttribute('data-id');
+        const dateOrDay = eventItem.getAttribute('data-day') || eventItem.getAttribute('data-date');
+        const type = eventItem.getAttribute('data-type');
+        removeScheduleItem(id, dateOrDay, type);
+      });
+    });
+
   } catch (error) {
     console.error('Error in updateScheduleDisplay:', error);
   }
 }
+
 
 async function removeScheduleItem(id, dateOrDay, type) {
   try {
