@@ -1,6 +1,7 @@
+import { syncScheduleWithNetwork, mergeSchedules, mergeArrays, cleanupSchedule, writeScheduleToNetwork } from './shared.js';
+
 const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
-// Log all network requests (for debugging)
 chrome.webRequest.onBeforeRequest.addListener(
   function(details) {
     console.log('Network request:', details);
@@ -9,8 +10,8 @@ chrome.webRequest.onBeforeRequest.addListener(
 );
 
 chrome.alarms.create("checkSchedule", { periodInMinutes: 1 });
-chrome.alarms.create("syncSchedule", { periodInMinutes: 1 }); // Sync every minute
-chrome.alarms.create("cleanupTabs", { periodInMinutes: 1 }); // Cleanup every minute
+chrome.alarms.create("syncSchedule", { periodInMinutes: 1 });
+chrome.alarms.create("cleanupTabs", { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "checkSchedule") {
@@ -27,73 +28,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.tabs.get(request.tabId, (tab) => {
       sendResponse({favIconUrl: tab.favIconUrl});
     });
-    return true; // Keeps the message channel open for async sendResponse
+    return true;
   } else if (request.action === "updateSchedule") {
     syncScheduleWithNetwork().then(syncResult => {
       sendResponse({ status: syncResult ? 'success' : 'failure' });
     });
-    return true; // Keeps the message channel open for async sendResponse
+    return true;
   }
 });
-
-async function syncScheduleWithNetwork() {
-  try {
-    const response = await fetch(SHARED_FILE_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const networkSchedule = await response.json();
-    const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
-    
-    const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
-    
-    // Clean up the merged schedule
-    const cleanedSchedule = await cleanupSchedule(mergedSchedule);
-    
-    await chrome.storage.local.set({ schedule: cleanedSchedule });
-    const writeSuccess = await writeScheduleToNetwork(cleanedSchedule);
-    if (!writeSuccess) {
-      console.error('Failed to write merged schedule to network');
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error('Error syncing schedule:', error);
-    return false;
-  }
-}
-
-function mergeSchedules(localSchedule, networkSchedule) {
-  const mergedSchedule = { recurring: {}, onetime: {} };
-
-  // Merge recurring schedules
-  const allDays = [...new Set([...Object.keys(localSchedule.recurring || {}), ...Object.keys(networkSchedule.recurring || {})])];
-  for (const day of allDays) {
-    mergedSchedule.recurring[day] = mergeArrays(localSchedule.recurring?.[day] || [], networkSchedule.recurring?.[day] || []);
-  }
-
-  // Merge one-time schedules
-  const allDates = [...new Set([...Object.keys(localSchedule.onetime || {}), ...Object.keys(networkSchedule.onetime || {})])];
-  for (const date of allDates) {
-    mergedSchedule.onetime[date] = mergeArrays(localSchedule.onetime?.[date] || [], networkSchedule.onetime?.[date] || []);
-  }
-
-  return mergedSchedule;
-}
-
-function mergeArrays(arr1, arr2) {
-  const merged = [...arr1];
-  for (const item of arr2) {
-    const existingIndex = merged.findIndex(e => e.id === item.id && e.time === item.time);
-    if (existingIndex === -1) {
-      merged.push(item);
-    } else {
-      // If the item already exists, use the most recent version
-      merged[existingIndex] = { ...merged[existingIndex], ...item };
-    }
-  }
-  return merged;
-}
 
 async function checkAndSwitchTabs() {
   const { schedule } = await chrome.storage.local.get('schedule');
@@ -101,10 +43,9 @@ async function checkAndSwitchTabs() {
 
   const now = new Date();
   const day = now.toLocaleString('en-us', {weekday: 'long'}).toLowerCase();
-  const date = now.toISOString().split('T')[0]; // YYYY-MM-DD format
-  const time = now.toTimeString().slice(0, 5); // HH:MM format
+  const date = now.toISOString().split('T')[0];
+  const time = now.toTimeString().slice(0, 5);
 
-  // Check recurring schedule
   if (schedule.recurring && schedule.recurring[day]) {
     const matchingItem = schedule.recurring[day].find(item => item.time === time);
     if (matchingItem) {
@@ -112,12 +53,10 @@ async function checkAndSwitchTabs() {
     }
   }
 
-  // Check one-time schedule
   if (schedule.onetime && schedule.onetime[date]) {
     const matchingItem = schedule.onetime[date].find(item => item.time === time);
     if (matchingItem) {
       switchToTab(matchingItem);
-      // Remove the one-time event after it's triggered
       schedule.onetime[date] = schedule.onetime[date].filter(item => item.time !== time);
       await chrome.storage.local.set({schedule});
       syncScheduleWithNetwork();
@@ -209,76 +148,4 @@ async function cleanupNonExistentTabs() {
   console.log('Finished cleanupNonExistentTabs');
 }
 
-// Run cleanup every 30 seconds
 chrome.alarms.create("cleanupTabs", { periodInMinutes: 0.5 });
-
-async function cleanupSchedule(schedule) {
-  if (!schedule || (Object.keys(schedule.recurring || {}).length === 0 && Object.keys(schedule.onetime || {}).length === 0)) {
-    console.log('Schedule is empty or undefined, returning empty schedule');
-    return { recurring: {}, onetime: {} };
-  }
-
-  const cleanSchedule = { recurring: {}, onetime: {} };
-  const allTabs = await chrome.tabs.query({});
-  const existingTabIds = new Set(allTabs.map(tab => tab.id));
-
-  for (const day in schedule.recurring || {}) {
-    cleanSchedule.recurring[day] = (schedule.recurring[day] || []).filter(item => existingTabIds.has(parseInt(item.id)));
-    if (cleanSchedule.recurring[day].length === 0) {
-      delete cleanSchedule.recurring[day];
-    }
-  }
-
-  for (const date in schedule.onetime || {}) {
-    cleanSchedule.onetime[date] = (schedule.onetime[date] || []).filter(item => existingTabIds.has(parseInt(item.id)));
-    if (cleanSchedule.onetime[date].length === 0) {
-      delete cleanSchedule.onetime[date];
-    }
-  }
-
-  return cleanSchedule;
-}
-
-async function writeScheduleToNetwork(schedule) {
-  console.log('Attempting to write schedule to network...');
-  console.log('Schedule to write:', JSON.stringify(schedule, null, 2));
-  try {
-    const response = await fetch(SHARED_FILE_URL, {
-      method: 'POST',
-      body: JSON.stringify(schedule),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const responseText = await response.text();
-    console.log('Response from write operation:', responseText);
-
-    // Introduce a delay before verification
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Verify if the file was actually updated
-    const verificationResponse = await fetch(SHARED_FILE_URL);
-    const updatedContent = await verificationResponse.json();
-    console.log('Updated file content:', JSON.stringify(updatedContent, null, 2));
-
-    if (JSON.stringify(updatedContent) === JSON.stringify(schedule)) {
-      console.log('Schedule successfully written and verified on network');
-      return true;
-    } else {
-      console.warn('Write operation completed, but content verification failed');
-      console.log('Expected:', JSON.stringify(schedule, null, 2));
-      console.log('Actual:', JSON.stringify(updatedContent, null, 2));
-      return false;
-    }
-  } catch (error) {
-    console.error('Error writing schedule to network:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
-    return false;
-  }
-}
