@@ -101,12 +101,13 @@ async function updateScheduleDisplay() {
       displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
       for (const item of cleanedSchedule.recurring[day]) {
         const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
-        displayHtml += `<div class="event-item">
+        displayHtml += `<div class="event-item" data-id="${item.id}" data-day="${day}" data-type="recurring">
           <img src="${faviconUrl}" class="favicon" alt="Favicon">
           <span class="tab-title">${item.title}</span>
           <label class="reload-label">
-            <input type="checkbox" ${item.reload ? 'checked' : ''} disabled> Reload
+            <input type="checkbox" ${item.reload ? 'checked' : ''} onchange="updateReloadSetting(this, '${item.id}', '${day}', 'recurring')"> Reload
           </label>
+          <button class="remove-item" onclick="removeScheduleItem('${item.id}', '${day}', 'recurring')">X</button>
         </div>`;
       }
     }
@@ -115,18 +116,52 @@ async function updateScheduleDisplay() {
       displayHtml += `<strong>${new Date(date).toDateString()}:</strong><br>`;
       for (const item of cleanedSchedule.onetime[date]) {
         const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
-        displayHtml += `<div class="event-item">
+        displayHtml += `<div class="event-item" data-id="${item.id}" data-date="${date}" data-type="onetime">
           <img src="${faviconUrl}" class="favicon" alt="Favicon">
           <span class="tab-title">${item.title}</span>
           <label class="reload-label">
-            <input type="checkbox" ${item.reload ? 'checked' : ''} disabled> Reload
+            <input type="checkbox" ${item.reload ? 'checked' : ''} onchange="updateReloadSetting(this, '${item.id}', '${date}', 'onetime')"> Reload
           </label>
+          <button class="remove-item" onclick="removeScheduleItem('${item.id}', '${date}', 'onetime')">X</button>
         </div>`;
       }
     }
     document.getElementById('currentSchedule').innerHTML = displayHtml;
   } catch (error) {
     console.error('Error in updateScheduleDisplay:', error);
+  }
+}
+
+async function removeScheduleItem(id, dateOrDay, type) {
+  try {
+    let { schedule } = await chrome.storage.local.get('schedule');
+    if (type === 'recurring') {
+      schedule.recurring[dateOrDay] = schedule.recurring[dateOrDay].filter(item => item.id !== id);
+    } else {
+      schedule.onetime[dateOrDay] = schedule.onetime[dateOrDay].filter(item => item.id !== id);
+    }
+    await chrome.storage.local.set({ schedule });
+    await syncScheduleWithNetwork();
+    updateScheduleDisplay();
+  } catch (error) {
+    console.error('Error in removeScheduleItem:', error);
+  }
+}
+
+async function updateReloadSetting(checkbox, id, dateOrDay, type) {
+  try {
+    let { schedule } = await chrome.storage.local.get('schedule');
+    if (type === 'recurring') {
+      const item = schedule.recurring[dateOrDay].find(item => item.id === id);
+      if (item) item.reload = checkbox.checked;
+    } else {
+      const item = schedule.onetime[dateOrDay].find(item => item.id === id);
+      if (item) item.reload = checkbox.checked;
+    }
+    await chrome.storage.local.set({ schedule });
+    await syncScheduleWithNetwork();
+  } catch (error) {
+    console.error('Error in updateReloadSetting:', error);
   }
 }
 
@@ -164,3 +199,7 @@ async function addScheduleItem() {
     console.error('Error in addScheduleItem:', error);
   }
 }
+
+// Add these lines at the end of the file
+window.removeScheduleItem = removeScheduleItem;
+window.updateReloadSetting = updateReloadSetting;
