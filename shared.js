@@ -112,3 +112,10 @@ async function syncScheduleWithNetwork() {
     }
   }
   
+  export {
+    syncScheduleWithNetwork,
+    mergeSchedules,
+    mergeArrays,
+    cleanupSchedule,
+    writeScheduleToNetwork
+};
