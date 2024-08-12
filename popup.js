@@ -1,6 +1,6 @@
 import { syncScheduleWithNetwork, mergeSchedules, mergeArrays, cleanupSchedule, writeScheduleToNetwork } from './shared.js';
 
-import { SHARED_FILE_URL } from './constants.js';
+import { SHARED_FILE_URL } from './shared.js';
 console.log(SHARED_FILE_URL);
 
 document.addEventListener('DOMContentLoaded', async function() {
