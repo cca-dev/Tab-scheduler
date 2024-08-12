@@ -95,40 +95,46 @@ async function updateScheduleDisplay() {
     const { schedule } = await chrome.storage.local.get('schedule');
     let cleanedSchedule = await cleanupSchedule(schedule);
     await chrome.storage.local.set({ schedule: cleanedSchedule });
+
+    // Build the display HTML
     let displayHtml = '<h3>Current Schedule:</h3>';
     displayHtml += '<h4>Recurring Events:</h4>';
     for (let day in cleanedSchedule.recurring) {
       displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
       for (const item of cleanedSchedule.recurring[day]) {
         const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
-        displayHtml += `<div class="event-item" data-id="${item.id}" data-day="${day}" data-type="recurring">
-          <img src="${faviconUrl}" class="favicon" alt="Favicon">
-          <span class="tab-title">${item.title}</span>
-          <label class="reload-label">
-            <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
-          </label>
-          <button class="remove-item">X</button>
-        </div>`;
+        displayHtml += `
+          <div class="event-item" data-id="${item.id}" data-day="${day}" data-type="recurring">
+            <img src="${faviconUrl}" class="favicon" alt="Favicon">
+            <span class="tab-title">${item.title}</span>
+            <label class="reload-label">
+              <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
+            </label>
+            <button class="remove-item">X</button>
+          </div>`;
       }
     }
+    
     displayHtml += '<h4>One-Time Events:</h4>';
     for (let date in cleanedSchedule.onetime) {
       displayHtml += `<strong>${new Date(date).toDateString()}:</strong><br>`;
       for (const item of cleanedSchedule.onetime[date]) {
         const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
-        displayHtml += `<div class="event-item" data-id="${item.id}" data-date="${date}" data-type="onetime">
-          <img src="${faviconUrl}" class="favicon" alt="Favicon">
-          <span class="tab-title">${item.title}</span>
-          <label class="reload-label">
-            <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
-          </label>
-          <button class="remove-item">X</button>
-        </div>`;
+        displayHtml += `
+          <div class="event-item" data-id="${item.id}" data-date="${date}" data-type="onetime">
+            <img src="${faviconUrl}" class="favicon" alt="Favicon">
+            <span class="tab-title">${item.title}</span>
+            <label class="reload-label">
+              <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
+            </label>
+            <button class="remove-item">X</button>
+          </div>`;
       }
     }
+
     document.getElementById('currentSchedule').innerHTML = displayHtml;
 
-    // Add event listeners for dynamically created elements
+    // Attach event listeners again after the DOM has been updated
     document.querySelectorAll('.reload-checkbox').forEach(checkbox => {
       checkbox.addEventListener('change', function() {
         const eventItem = checkbox.closest('.event-item');
