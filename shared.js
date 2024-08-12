@@ -1,5 +1,4 @@
 // SHARED.JS
-// constants.js
 
 export const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
