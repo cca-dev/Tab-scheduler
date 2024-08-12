@@ -4,58 +4,62 @@ export const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
 async function syncScheduleWithNetwork() {
     try {
-      const response = await fetch(SHARED_FILE_URL);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const networkSchedule = await response.json();
-      const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
-      
-      const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
-      
-      const cleanedSchedule = await cleanupSchedule(mergedSchedule);
-      
-      await chrome.storage.local.set({ schedule: cleanedSchedule });
-      const writeSuccess = await writeScheduleToNetwork(cleanedSchedule);
-      if (!writeSuccess) {
-        console.error('Failed to write merged schedule to network');
-        return false;
-      }
-      return true;
+        const response = await fetch(SHARED_FILE_URL);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const networkSchedule = await response.json();
+        const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+
+        const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
+
+        const cleanedSchedule = await cleanupSchedule(mergedSchedule);
+
+        // Ensure that local changes are saved before syncing with the network
+        await chrome.storage.local.set({ schedule: cleanedSchedule });
+        const writeSuccess = await writeScheduleToNetwork(cleanedSchedule);
+        if (!writeSuccess) {
+            console.error('Failed to write merged schedule to network');
+            return false;
+        }
+        return true;
     } catch (error) {
-      console.error('Error syncing schedule:', error);
-      return false;
+        console.error('Error syncing schedule:', error);
+        return false;
     }
-  }
+}
+
   
-  function mergeSchedules(localSchedule, networkSchedule) {
+function mergeSchedules(localSchedule, networkSchedule) {
     const mergedSchedule = { recurring: {}, onetime: {} };
-  
+
     const allDays = [...new Set([...Object.keys(localSchedule.recurring || {}), ...Object.keys(networkSchedule.recurring || {})])];
     for (const day of allDays) {
-      mergedSchedule.recurring[day] = mergeArrays(localSchedule.recurring?.[day] || [], networkSchedule.recurring?.[day] || []);
+        mergedSchedule.recurring[day] = mergeArrays(localSchedule.recurring?.[day] || [], networkSchedule.recurring?.[day] || []);
     }
-  
+
     const allDates = [...new Set([...Object.keys(localSchedule.onetime || {}), ...Object.keys(networkSchedule.onetime || {})])];
     for (const date of allDates) {
-      mergedSchedule.onetime[date] = mergeArrays(localSchedule.onetime?.[date] || [], networkSchedule.onetime?.[date] || []);
+        mergedSchedule.onetime[date] = mergeArrays(localSchedule.onetime?.[date] || [], networkSchedule.onetime?.[date] || []);
     }
-  
+
     return mergedSchedule;
-  }
-  
-  function mergeArrays(arr1, arr2) {
+}
+
+function mergeArrays(arr1, arr2) {
     const merged = [...arr1];
     for (const item of arr2) {
-      const existingIndex = merged.findIndex(e => e.id === item.id && e.time === item.time);
-      if (existingIndex === -1) {
-        merged.push(item);
-      } else {
-        merged[existingIndex] = { ...merged[existingIndex], ...item };
-      }
+        const existingIndex = merged.findIndex(e => e.id === item.id && e.time === item.time);
+        if (existingIndex === -1) {
+            merged.push(item);
+        } else {
+            // Prioritize the local data
+            merged[existingIndex] = { ...item, ...merged[existingIndex] }; 
+        }
     }
     return merged;
-  }
+}
+
   
   async function cleanupSchedule(schedule) {
     if (!schedule || (Object.keys(schedule.recurring || {}).length === 0 && Object.keys(schedule.onetime || {}).length === 0)) {

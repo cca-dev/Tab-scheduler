@@ -163,36 +163,39 @@ async function updateScheduleDisplay() {
 
 async function removeScheduleItem(id, dateOrDay, type) {
   try {
-    let { schedule } = await chrome.storage.local.get('schedule');
-    if (type === 'recurring') {
-      schedule.recurring[dateOrDay] = schedule.recurring[dateOrDay].filter(item => item.id !== id);
-    } else {
-      schedule.onetime[dateOrDay] = schedule.onetime[dateOrDay].filter(item => item.id !== id);
-    }
-    await chrome.storage.local.set({ schedule });
-    await syncScheduleWithNetwork();
-    updateScheduleDisplay();
+      let { schedule } = await chrome.storage.local.get('schedule');
+      if (type === 'recurring') {
+          schedule.recurring[dateOrDay] = schedule.recurring[dateOrDay].filter(item => item.id !== id);
+      } else {
+          schedule.onetime[dateOrDay] = schedule.onetime[dateOrDay].filter(item => item.id !== id);
+      }
+      await chrome.storage.local.set({ schedule });
+      // Trigger sync after successful local update
+      await syncScheduleWithNetwork();
+      updateScheduleDisplay();
   } catch (error) {
-    console.error('Error in removeScheduleItem:', error);
+      console.error('Error in removeScheduleItem:', error);
   }
 }
 
 async function updateReloadSetting(checkbox, id, dateOrDay, type) {
   try {
-    let { schedule } = await chrome.storage.local.get('schedule');
-    if (type === 'recurring') {
-      const item = schedule.recurring[dateOrDay].find(item => item.id === id);
-      if (item) item.reload = checkbox.checked;
-    } else {
-      const item = schedule.onetime[dateOrDay].find(item => item.id === id);
-      if (item) item.reload = checkbox.checked;
-    }
-    await chrome.storage.local.set({ schedule });
-    await syncScheduleWithNetwork();
+      let { schedule } = await chrome.storage.local.get('schedule');
+      if (type === 'recurring') {
+          const item = schedule.recurring[dateOrDay].find(item => item.id === id);
+          if (item) item.reload = checkbox.checked;
+      } else {
+          const item = schedule.onetime[dateOrDay].find(item => item.id === id);
+          if (item) item.reload = checkbox.checked;
+      }
+      await chrome.storage.local.set({ schedule });
+      // Trigger sync after successful local update
+      await syncScheduleWithNetwork();
   } catch (error) {
-    console.error('Error in updateReloadSetting:', error);
+      console.error('Error in updateReloadSetting:', error);
   }
 }
+
 
 async function addScheduleItem() {
   try {
