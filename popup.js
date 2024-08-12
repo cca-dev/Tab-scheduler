@@ -104,7 +104,7 @@ async function updateScheduleDisplay() {
     }
   }
 
-  document.getElementById('scheduleList').innerHTML = displayHtml;
+  document.getElementById('currentSchedule').innerHTML = displayHtml;
 }
 
 async function addScheduleItem() {
