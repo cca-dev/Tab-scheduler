@@ -1,6 +1,8 @@
 import { syncScheduleWithNetwork, mergeSchedules, mergeArrays, cleanupSchedule, writeScheduleToNetwork } from './shared.js';
 
-const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
+import { SHARED_FILE_URL } from './constants.js';
+
+console.log(SHARED_FILE_URL);  // Outputs: 'https://ccc.local:44300/tab_schedule.json'
 
 chrome.webRequest.onBeforeRequest.addListener(
   function(details) {
