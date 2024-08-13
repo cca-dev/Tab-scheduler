@@ -1,105 +1,17 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <title>Kiosk Tab Scheduler</title>
-  <style>
-    body {
-      width: 350px;
-      padding: 10px;
-      font-family: Arial, sans-serif;
-    }
-
-    select,
-    input {
-      margin: 5px 0;
-      width: 100%;
-    }
-
-    #dateInput {
-      display: none;
-    }
-
-    .event-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-      font-size: 14px;
-    }
-
-    .favicon {
-      width: 16px;
-      height: 16px;
-      margin-right: 8px;
-      flex-shrink: 0;
-    }
-
-    .tab-title {
-      flex-grow: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-right: 8px;
-      max-width: 200px;
-      /* Adjust this value based on your popup width */
-    }
-
-    .reload-label {
-      display: flex;
-      align-items: center;
-      margin-right: 8px;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .reload-checkbox {
-      margin-right: 4px;
-    }
-
-    .delete-btn {
-      cursor: pointer;
-      font-size: 18px;
-      color: #888;
-      flex-shrink: 0;
-    }
-
-    .delete-btn:hover {
-      color: #f00;
-    }
-
-    .event-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 5px;
-    }
-
-    .remove-item {
-      margin-left: 10px;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCA Scheduled Tab Switcher</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-  <h2>Schedule Tab Switches</h2>
-  <select id="scheduleType">
-    <option value="recurring">Recurring</option>
-    <option value="onetime">One-time</option>
-  </select>
-  <select id="day">
-    <option value="monday">Monday</option>
-    <option value="tuesday">Tuesday</option>
-    <option value="wednesday">Wednesday</option>
-    <option value="thursday">Thursday</option>
-    <option value="friday">Friday</option>
-    <option value="saturday">Saturday</option>
-    <option value="sunday">Sunday</option>
-  </select>
-  <input type="date" id="dateInput">
-  <input type="time" id="time">
-  <select id="tabSelect"></select>
-  <button id="addSchedule">Add to Schedule</button>
-  <div id="currentSchedule"></div>
-  <script type="module" src="popup.js"></script>
+    <div id="app">
+        <h1>CCA Scheduled Tab Switcher</h1>
+        <div id="scheduleForm"></div>
+        <div id="scheduleTable"></div>
+    </div>
+    <script type="module" src="popup.js"></script>
 </body>
 </html>
