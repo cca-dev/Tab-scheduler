@@ -153,5 +153,3 @@ async function cleanupNonExistentTabs() {
   
   console.log('Finished cleanupNonExistentTabs');
 }
-
-chrome.alarms.create("cleanupTabs", { periodInMinutes: 0.5 });
