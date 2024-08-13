@@ -155,7 +155,13 @@ async function handleReloadChange(event) {
       if (item) item.reload = checkbox.checked;
     }
     await chrome.storage.local.set({ schedule });
-    await syncScheduleWithNetwork();
+    console.log('Local storage updated:', schedule);
+    const syncResult = await syncScheduleWithNetwork();
+    console.log('Sync result:', syncResult);
+    if (!syncResult) {
+      console.error('Failed to sync with network');
+      // Optionally, revert the change in local storage
+    }
   } catch (error) {
     console.error('Error in handleReloadChange:', error);
   }
@@ -176,7 +182,13 @@ async function handleRemoveItem(event) {
       schedule.onetime[dateOrDay] = schedule.onetime[dateOrDay].filter(item => item.id !== id);
     }
     await chrome.storage.local.set({ schedule });
-    await syncScheduleWithNetwork();
+    console.log('Local storage updated after removal:', schedule);
+    const syncResult = await syncScheduleWithNetwork();
+    console.log('Sync result after removal:', syncResult);
+    if (!syncResult) {
+      console.error('Failed to sync with network after removal');
+      // Optionally, revert the change in local storage
+    }
     await updateScheduleDisplay();
   } catch (error) {
     console.error('Error in handleRemoveItem:', error);
