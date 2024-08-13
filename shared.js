@@ -7,22 +7,27 @@ export async function syncScheduleWithNetwork() {
     console.log('Starting syncScheduleWithNetwork');
 
     // Fetch network schedule
+    console.log('Fetching network schedule');
     const networkSchedule = await fetchNetworkSchedule();
-    console.log('Network schedule:', networkSchedule);
+    console.log('Network schedule:', JSON.stringify(networkSchedule, null, 2));
 
     // Get local schedule
+    console.log('Getting local schedule');
     const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
-    console.log('Local schedule:', localSchedule);
+    console.log('Local schedule:', JSON.stringify(localSchedule, null, 2));
 
     // Merge schedules, prioritizing network schedule
+    console.log('Merging schedules');
     const mergedSchedule = mergeSchedules(networkSchedule, localSchedule || { recurring: {}, onetime: {} });
-    console.log('Merged schedule:', mergedSchedule);
+    console.log('Merged schedule:', JSON.stringify(mergedSchedule, null, 2));
 
     // Clean up the merged schedule
+    console.log('Cleaning up merged schedule');
     const cleanedSchedule = await cleanupSchedule(mergedSchedule);
-    console.log('Cleaned schedule:', cleanedSchedule);
+    console.log('Cleaned schedule:', JSON.stringify(cleanedSchedule, null, 2));
 
     // Write the cleaned schedule back to the network
+    console.log('Writing cleaned schedule to network');
     const writeSuccess = await writeScheduleToNetwork(cleanedSchedule);
     if (!writeSuccess) {
       console.error('Failed to write merged schedule to network');
@@ -30,8 +35,9 @@ export async function syncScheduleWithNetwork() {
     }
 
     // Update local storage with the cleaned schedule
+    console.log('Updating local storage with cleaned schedule');
     await chrome.storage.local.set({ schedule: cleanedSchedule });
-    console.log('Updated local storage with cleaned schedule');
+    console.log('Local storage updated');
 
     console.log('Successfully synced schedule');
     return true;

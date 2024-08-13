@@ -180,7 +180,10 @@ async function handleRemoveItem(event) {
   const type = eventItem.dataset.type;
 
   try {
+    console.log('Removing item:', { id, dateOrDay, type });
     let { schedule } = await chrome.storage.local.get('schedule');
+    console.log('Schedule before removal:', JSON.parse(JSON.stringify(schedule)));
+
     if (type === 'recurring') {
       schedule.recurring[dateOrDay] = schedule.recurring[dateOrDay].filter(item => item.id !== id);
       if (schedule.recurring[dateOrDay].length === 0) {
@@ -192,18 +195,28 @@ async function handleRemoveItem(event) {
         delete schedule.onetime[dateOrDay];
       }
     }
+
+    console.log('Schedule after removal:', JSON.parse(JSON.stringify(schedule)));
     await chrome.storage.local.set({ schedule });
+    
+    console.log('Starting sync after removal');
     const syncResult = await syncScheduleWithNetwork();
+    console.log('Sync result:', syncResult);
+
     if (syncResult) {
-      eventItem.remove(); // Remove the item from the DOM only if sync was successful
+      console.log('Sync successful, removing item from DOM');
+      eventItem.remove();
     } else {
       console.error('Failed to sync with network after removal');
       // Revert the change in local storage
+      console.log('Reverting changes');
       await syncScheduleWithNetwork(); // This will restore the previous state
+      console.log('Refreshing display');
       await updateScheduleDisplay(); // Refresh the display
     }
   } catch (error) {
     console.error('Error in handleRemoveItem:', error);
+    await updateScheduleDisplay(); // Refresh the display in case of error
   }
 }
 
