@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   try {
     await syncScheduleWithNetwork();
     await populateTabDropdown();
-    await cleanupPastEvents();
     await updateScheduleDisplay();
     setupEventListeners();
   } catch (error) {
@@ -90,12 +89,11 @@ async function getFavicon(tabId) {
 async function updateScheduleDisplay() {
   try {
     const { schedule } = await chrome.storage.local.get('schedule');
-    let cleanedSchedule = await cleanupSchedule(schedule);
     let displayHtml = '<h3>Current Schedule:</h3>';
     displayHtml += '<h4>Recurring Events:</h4>';
-    for (let day in cleanedSchedule.recurring) {
+    for (let day in schedule.recurring) {
       displayHtml += `<strong>${day.charAt(0).toUpperCase() + day.slice(1)}:</strong><br>`;
-      for (const item of cleanedSchedule.recurring[day]) {
+      for (const item of schedule.recurring[day]) {
         const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
         displayHtml += `
           <div class="event-item" data-id="${item.id}" data-day="${day}" data-type="recurring">
@@ -110,9 +108,9 @@ async function updateScheduleDisplay() {
       }
     }
     displayHtml += '<h4>One-Time Events:</h4>';
-    for (let date in cleanedSchedule.onetime) {
+    for (let date in schedule.onetime) {
       displayHtml += `<strong>${new Date(date).toDateString()}:</strong><br>`;
-      for (const item of cleanedSchedule.onetime[date]) {
+      for (const item of schedule.onetime[date]) {
         const faviconUrl = await getFavicon(item.id).catch(() => 'default_favicon.png');
         displayHtml += `
           <div class="event-item" data-id="${item.id}" data-date="${date}" data-type="onetime">
@@ -157,9 +155,7 @@ async function handleReloadChange(event) {
       if (item) item.reload = checkbox.checked;
     }
     await chrome.storage.local.set({ schedule });
-    console.log('Local storage updated:', schedule);
     const syncResult = await syncScheduleWithNetwork();
-    console.log('Sync result:', syncResult);
     if (!syncResult) {
       console.error('Failed to sync with network');
       // Revert the change in local storage
@@ -197,15 +193,14 @@ async function handleRemoveItem(event) {
       }
     }
     await chrome.storage.local.set({ schedule });
-    console.log('Local storage updated after removal:', schedule);
     const syncResult = await syncScheduleWithNetwork();
-    console.log('Sync result after removal:', syncResult);
-    if (!syncResult) {
+    if (syncResult) {
+      eventItem.remove(); // Remove the item from the DOM only if sync was successful
+    } else {
       console.error('Failed to sync with network after removal');
       // Revert the change in local storage
       await syncScheduleWithNetwork(); // This will restore the previous state
-    } else {
-      eventItem.remove(); // Remove the item from the DOM only if sync was successful
+      await updateScheduleDisplay(); // Refresh the display
     }
   } catch (error) {
     console.error('Error in handleRemoveItem:', error);
@@ -221,7 +216,7 @@ async function addScheduleItem() {
     const reloadElement = document.getElementById('reload');
     const reload = reloadElement ? reloadElement.checked : false;
     let date;
-    let time = document.getElementById('time').value; // Get the time value
+    let time = document.getElementById('time').value;
 
     if (scheduleType === 'recurring') {
       date = document.getElementById('day').value.toLowerCase();
@@ -242,7 +237,7 @@ async function addScheduleItem() {
       if (reloadElement) {
         reloadElement.checked = false;
       }
-      document.getElementById('time').value = ''; // Clear the time input
+      document.getElementById('time').value = '';
     } else {
       console.error('Failed to sync new item with network');
       // Revert the change in local storage

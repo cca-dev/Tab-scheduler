@@ -4,31 +4,36 @@ export const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
 export async function syncScheduleWithNetwork() {
   try {
-    const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
-    console.log('Local schedule before sync:', localSchedule);
+    console.log('Starting syncScheduleWithNetwork');
 
-    const response = await fetch(SHARED_FILE_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const networkSchedule = await response.json();
+    // Fetch network schedule
+    const networkSchedule = await fetchNetworkSchedule();
     console.log('Network schedule:', networkSchedule);
 
-    const mergedSchedule = mergeSchedules(localSchedule || { recurring: {}, onetime: {} }, networkSchedule);
+    // Get local schedule
+    const { schedule: localSchedule } = await chrome.storage.local.get('schedule');
+    console.log('Local schedule:', localSchedule);
+
+    // Merge schedules, prioritizing network schedule
+    const mergedSchedule = mergeSchedules(networkSchedule, localSchedule || { recurring: {}, onetime: {} });
     console.log('Merged schedule:', mergedSchedule);
 
+    // Clean up the merged schedule
     const cleanedSchedule = await cleanupSchedule(mergedSchedule);
     console.log('Cleaned schedule:', cleanedSchedule);
 
-    await chrome.storage.local.set({ schedule: cleanedSchedule });
-    console.log('Updated local storage with cleaned schedule');
-
+    // Write the cleaned schedule back to the network
     const writeSuccess = await writeScheduleToNetwork(cleanedSchedule);
     if (!writeSuccess) {
       console.error('Failed to write merged schedule to network');
       return false;
     }
-    console.log('Successfully wrote schedule to network');
+
+    // Update local storage with the cleaned schedule
+    await chrome.storage.local.set({ schedule: cleanedSchedule });
+    console.log('Updated local storage with cleaned schedule');
+
+    console.log('Successfully synced schedule');
     return true;
   } catch (error) {
     console.error('Error syncing schedule:', error);
@@ -36,17 +41,31 @@ export async function syncScheduleWithNetwork() {
   }
 }
 
-export function mergeSchedules(localSchedule, networkSchedule) {
-  const mergedSchedule = { recurring: {}, onetime: {} };
+async function fetchNetworkSchedule() {
+  const response = await fetch(SHARED_FILE_URL);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return await response.json();
+}
 
-  const allDays = [...new Set([...Object.keys(localSchedule.recurring || {}), ...Object.keys(networkSchedule.recurring || {})])];
-  for (const day of allDays) {
-    mergedSchedule.recurring[day] = mergeArrays(localSchedule.recurring?.[day] || [], networkSchedule.recurring?.[day] || []);
+export function mergeSchedules(networkSchedule, localSchedule) {
+  const mergedSchedule = JSON.parse(JSON.stringify(networkSchedule));
+
+  // Merge recurring events
+  for (const day in localSchedule.recurring) {
+    if (!mergedSchedule.recurring[day]) {
+      mergedSchedule.recurring[day] = [];
+    }
+    mergedSchedule.recurring[day] = mergeArrays(mergedSchedule.recurring[day], localSchedule.recurring[day]);
   }
 
-  const allDates = [...new Set([...Object.keys(localSchedule.onetime || {}), ...Object.keys(networkSchedule.onetime || {})])];
-  for (const date of allDates) {
-    mergedSchedule.onetime[date] = mergeArrays(localSchedule.onetime?.[date] || [], networkSchedule.onetime?.[date] || []);
+  // Merge one-time events
+  for (const date in localSchedule.onetime) {
+    if (!mergedSchedule.onetime[date]) {
+      mergedSchedule.onetime[date] = [];
+    }
+    mergedSchedule.onetime[date] = mergeArrays(mergedSchedule.onetime[date], localSchedule.onetime[date]);
   }
 
   return mergedSchedule;
@@ -55,7 +74,7 @@ export function mergeSchedules(localSchedule, networkSchedule) {
 export function mergeArrays(arr1, arr2) {
   const merged = [...arr1];
   for (const item of arr2) {
-    const existingIndex = merged.findIndex(e => e.id === item.id);
+    const existingIndex = merged.findIndex(e => e.id === item.id && e.time === item.time);
     if (existingIndex === -1) {
       merged.push(item);
     } else {
@@ -81,10 +100,15 @@ export async function cleanupSchedule(schedule) {
     }
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   for (const date in schedule.onetime || {}) {
-    cleanSchedule.onetime[date] = (schedule.onetime[date] || []).filter(item => existingTabIds.has(item.id.toString()));
-    if (cleanSchedule.onetime[date].length === 0) {
-      delete cleanSchedule.onetime[date];
+    if (new Date(date) >= today) {
+      cleanSchedule.onetime[date] = (schedule.onetime[date] || []).filter(item => existingTabIds.has(item.id.toString()));
+      if (cleanSchedule.onetime[date].length === 0) {
+        delete cleanSchedule.onetime[date];
+      }
     }
   }
 
@@ -105,7 +129,6 @@ export async function writeScheduleToNetwork(schedule) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const responseText = await response.text();
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const verificationResponse = await fetch(SHARED_FILE_URL);
