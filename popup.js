@@ -5,13 +5,10 @@ console.log(SHARED_FILE_URL);
 
 document.addEventListener('DOMContentLoaded', async function() {
   try {
-    const { schedule } = await chrome.storage.local.get('schedule');
-    const cleanedSchedule = await cleanupSchedule(schedule);
-    await chrome.storage.local.set({ schedule: cleanedSchedule });
     await syncScheduleWithNetwork();
     await populateTabDropdown();
     await cleanupPastEvents();
-    updateScheduleDisplay();
+    await updateScheduleDisplay();
     setupEventListeners();
   } catch (error) {
     console.error('Error during DOMContentLoaded:', error);
@@ -94,9 +91,6 @@ async function updateScheduleDisplay() {
   try {
     const { schedule } = await chrome.storage.local.get('schedule');
     let cleanedSchedule = await cleanupSchedule(schedule);
-    await chrome.storage.local.set({ schedule: cleanedSchedule });
-
-    // Build the display HTML
     let displayHtml = '<h3>Current Schedule:</h3>';
     displayHtml += '<h4>Recurring Events:</h4>';
     for (let day in cleanedSchedule.recurring) {
@@ -108,13 +102,12 @@ async function updateScheduleDisplay() {
             <img src="${faviconUrl}" class="favicon" alt="Favicon">
             <span class="tab-title">${item.title}</span>
             <label class="reload-label">
-              <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
+              <input type="checkbox" ${item.reload ? 'checked' : ''} class="reload-checkbox"> Reload
             </label>
             <button class="remove-item">X</button>
           </div>`;
       }
     }
-    
     displayHtml += '<h4>One-Time Events:</h4>';
     for (let date in cleanedSchedule.onetime) {
       displayHtml += `<strong>${new Date(date).toDateString()}:</strong><br>`;
@@ -125,38 +118,68 @@ async function updateScheduleDisplay() {
             <img src="${faviconUrl}" class="favicon" alt="Favicon">
             <span class="tab-title">${item.title}</span>
             <label class="reload-label">
-              <input type="checkbox" class="reload-checkbox" ${item.reload ? 'checked' : ''}> Reload
+              <input type="checkbox" ${item.reload ? 'checked' : ''} class="reload-checkbox"> Reload
             </label>
             <button class="remove-item">X</button>
           </div>`;
       }
     }
-
     document.getElementById('currentSchedule').innerHTML = displayHtml;
-
-    // Attach event listeners again after the DOM has been updated
+    
+    // Add event listeners for reload checkboxes and remove buttons
     document.querySelectorAll('.reload-checkbox').forEach(checkbox => {
-      checkbox.addEventListener('change', function() {
-        const eventItem = checkbox.closest('.event-item');
-        const id = eventItem.getAttribute('data-id');
-        const dateOrDay = eventItem.getAttribute('data-day') || eventItem.getAttribute('data-date');
-        const type = eventItem.getAttribute('data-type');
-        updateReloadSetting(checkbox, id, dateOrDay, type);
-      });
+      checkbox.addEventListener('change', handleReloadChange);
     });
-
     document.querySelectorAll('.remove-item').forEach(button => {
-      button.addEventListener('click', function() {
-        const eventItem = button.closest('.event-item');
-        const id = eventItem.getAttribute('data-id');
-        const dateOrDay = eventItem.getAttribute('data-day') || eventItem.getAttribute('data-date');
-        const type = eventItem.getAttribute('data-type');
-        removeScheduleItem(id, dateOrDay, type);
-      });
+      button.addEventListener('click', handleRemoveItem);
     });
-
   } catch (error) {
     console.error('Error in updateScheduleDisplay:', error);
+  }
+}
+
+async function handleReloadChange(event) {
+  const checkbox = event.target;
+  const eventItem = checkbox.closest('.event-item');
+  const id = eventItem.dataset.id;
+  const dateOrDay = eventItem.dataset.day || eventItem.dataset.date;
+  const type = eventItem.dataset.type;
+
+  try {
+    let { schedule } = await chrome.storage.local.get('schedule');
+    if (type === 'recurring') {
+      const item = schedule.recurring[dateOrDay].find(item => item.id === id);
+      if (item) item.reload = checkbox.checked;
+    } else {
+      const item = schedule.onetime[dateOrDay].find(item => item.id === id);
+      if (item) item.reload = checkbox.checked;
+    }
+    await chrome.storage.local.set({ schedule });
+    await syncScheduleWithNetwork();
+  } catch (error) {
+    console.error('Error in handleReloadChange:', error);
+  }
+}
+
+async function handleRemoveItem(event) {
+  const button = event.target;
+  const eventItem = button.closest('.event-item');
+  const id = eventItem.dataset.id;
+  const dateOrDay = eventItem.dataset.day || eventItem.dataset.date;
+  const type = eventItem.dataset.type;
+
+  try {
+    let { schedule } = await chrome.storage.local.get('schedule');
+    if (type === 'recurring') {
+      schedule.recurring[dateOrDay] = schedule.recurring[dateOrDay].filter(item => item.id !== id);
+    } else {
+      schedule.onetime[dateOrDay] = schedule.onetime[dateOrDay].filter(item => item.id !== id);
+    }
+    await chrome.storage.local.set({ schedule });
+    await syncScheduleWithNetwork();
+    await updateScheduleDisplay();
+  } catch (error) {
+    console.error('Error in handleRemoveItem:', error);
   }
 }
 

@@ -35,6 +35,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ status: syncResult ? 'success' : 'failure' });
     });
     return true;
+  } else if (request.action === "getSchedule") {
+    chrome.storage.local.get('schedule', (result) => {
+      sendResponse(result.schedule);
+    });
+    return true;
   }
 });
 
@@ -60,7 +65,7 @@ async function checkAndSwitchTabs() {
       switchToTab(matchingItem);
       schedule.onetime[date] = schedule.onetime[date].filter(item => item.time !== time);
       await chrome.storage.local.set({schedule});
-      syncScheduleWithNetwork();
+      await syncScheduleWithNetwork();
     }
   }
 }
