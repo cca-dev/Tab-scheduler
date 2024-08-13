@@ -101,6 +101,7 @@ async function updateScheduleDisplay() {
           <div class="event-item" data-id="${item.id}" data-day="${day}" data-type="recurring">
             <img src="${faviconUrl}" class="favicon" alt="Favicon">
             <span class="tab-title">${item.title}</span>
+            <span class="time">${item.time}</span>
             <label class="reload-label">
               <input type="checkbox" ${item.reload ? 'checked' : ''} class="reload-checkbox"> Reload
             </label>
@@ -117,6 +118,7 @@ async function updateScheduleDisplay() {
           <div class="event-item" data-id="${item.id}" data-date="${date}" data-type="onetime">
             <img src="${faviconUrl}" class="favicon" alt="Favicon">
             <span class="tab-title">${item.title}</span>
+            <span class="time">${item.time}</span>
             <label class="reload-label">
               <input type="checkbox" ${item.reload ? 'checked' : ''} class="reload-checkbox"> Reload
             </label>
@@ -160,7 +162,14 @@ async function handleReloadChange(event) {
     console.log('Sync result:', syncResult);
     if (!syncResult) {
       console.error('Failed to sync with network');
-      // Optionally, revert the change in local storage
+      // Revert the change in local storage
+      if (type === 'recurring') {
+        schedule.recurring[dateOrDay].find(item => item.id === id).reload = !checkbox.checked;
+      } else {
+        schedule.onetime[dateOrDay].find(item => item.id === id).reload = !checkbox.checked;
+      }
+      await chrome.storage.local.set({ schedule });
+      checkbox.checked = !checkbox.checked;
     }
   } catch (error) {
     console.error('Error in handleReloadChange:', error);
@@ -178,8 +187,14 @@ async function handleRemoveItem(event) {
     let { schedule } = await chrome.storage.local.get('schedule');
     if (type === 'recurring') {
       schedule.recurring[dateOrDay] = schedule.recurring[dateOrDay].filter(item => item.id !== id);
+      if (schedule.recurring[dateOrDay].length === 0) {
+        delete schedule.recurring[dateOrDay];
+      }
     } else {
       schedule.onetime[dateOrDay] = schedule.onetime[dateOrDay].filter(item => item.id !== id);
+      if (schedule.onetime[dateOrDay].length === 0) {
+        delete schedule.onetime[dateOrDay];
+      }
     }
     await chrome.storage.local.set({ schedule });
     console.log('Local storage updated after removal:', schedule);
@@ -187,50 +202,15 @@ async function handleRemoveItem(event) {
     console.log('Sync result after removal:', syncResult);
     if (!syncResult) {
       console.error('Failed to sync with network after removal');
-      // Optionally, revert the change in local storage
+      // Revert the change in local storage
+      await syncScheduleWithNetwork(); // This will restore the previous state
+    } else {
+      eventItem.remove(); // Remove the item from the DOM only if sync was successful
     }
-    await updateScheduleDisplay();
   } catch (error) {
     console.error('Error in handleRemoveItem:', error);
   }
 }
-
-
-async function removeScheduleItem(id, dateOrDay, type) {
-  try {
-      let { schedule } = await chrome.storage.local.get('schedule');
-      if (type === 'recurring') {
-          schedule.recurring[dateOrDay] = schedule.recurring[dateOrDay].filter(item => item.id !== id);
-      } else {
-          schedule.onetime[dateOrDay] = schedule.onetime[dateOrDay].filter(item => item.id !== id);
-      }
-      await chrome.storage.local.set({ schedule });
-      // Trigger sync after successful local update
-      await syncScheduleWithNetwork();
-      updateScheduleDisplay();
-  } catch (error) {
-      console.error('Error in removeScheduleItem:', error);
-  }
-}
-
-async function updateReloadSetting(checkbox, id, dateOrDay, type) {
-  try {
-      let { schedule } = await chrome.storage.local.get('schedule');
-      if (type === 'recurring') {
-          const item = schedule.recurring[dateOrDay].find(item => item.id === id);
-          if (item) item.reload = checkbox.checked;
-      } else {
-          const item = schedule.onetime[dateOrDay].find(item => item.id === id);
-          if (item) item.reload = checkbox.checked;
-      }
-      await chrome.storage.local.set({ schedule });
-      // Trigger sync after successful local update
-      await syncScheduleWithNetwork();
-  } catch (error) {
-      console.error('Error in updateReloadSetting:', error);
-  }
-}
-
 
 async function addScheduleItem() {
   try {
@@ -241,14 +221,12 @@ async function addScheduleItem() {
     const reloadElement = document.getElementById('reload');
     const reload = reloadElement ? reloadElement.checked : false;
     let date;
-    let time;
+    let time = document.getElementById('time').value; // Get the time value
 
     if (scheduleType === 'recurring') {
       date = document.getElementById('day').value.toLowerCase();
-      time = document.getElementById('time').value;
     } else {
       date = document.getElementById('dateInput').value;
-      time = '00:00';
     }
 
     const newItem = { id: tabId, title, time, reload };
@@ -257,16 +235,21 @@ async function addScheduleItem() {
     schedule[scheduleType][date] = schedule[scheduleType][date] || [];
     schedule[scheduleType][date].push(newItem);
     await chrome.storage.local.set({ schedule });
-    await updateScheduleDisplay();
-    document.getElementById('tabSelect').value = '';
-    if (reloadElement) {
-      reloadElement.checked = false;
+    const syncResult = await syncScheduleWithNetwork();
+    if (syncResult) {
+      await updateScheduleDisplay();
+      document.getElementById('tabSelect').value = '';
+      if (reloadElement) {
+        reloadElement.checked = false;
+      }
+      document.getElementById('time').value = ''; // Clear the time input
+    } else {
+      console.error('Failed to sync new item with network');
+      // Revert the change in local storage
+      schedule[scheduleType][date].pop();
+      await chrome.storage.local.set({ schedule });
     }
   } catch (error) {
     console.error('Error in addScheduleItem:', error);
   }
 }
-
-// Add these lines at the end of the file
-window.removeScheduleItem = removeScheduleItem;
-window.updateReloadSetting = updateReloadSetting;

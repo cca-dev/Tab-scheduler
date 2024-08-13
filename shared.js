@@ -55,7 +55,7 @@ export function mergeSchedules(localSchedule, networkSchedule) {
 export function mergeArrays(arr1, arr2) {
   const merged = [...arr1];
   for (const item of arr2) {
-    const existingIndex = merged.findIndex(e => e.id === item.id && e.time === item.time);
+    const existingIndex = merged.findIndex(e => e.id === item.id);
     if (existingIndex === -1) {
       merged.push(item);
     } else {
