@@ -22,10 +22,15 @@ export default class ConflictResolver {
 
     async openMissingTabs(missingTabs) {
         for (const tab of missingTabs) {
-            await chrome.tabs.create({ url: tab.url });
+            if (tab.url) {
+                await chrome.tabs.create({ url: tab.url });
+            } else {
+                console.error('No URL found for missing tab:', tab);
+            }
         }
         document.querySelector('.dialog').remove();
     }
+    
 
     async removeMissingTabs(missingTabs) {
         // Implement logic to remove missing tabs from the schedule
