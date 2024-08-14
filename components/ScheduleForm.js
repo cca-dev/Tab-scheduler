@@ -67,7 +67,8 @@ export default class ScheduleForm {
             if (!date || !time) {
                 console.error('Date or time is missing');
                 return;
-            }    
+            }
+    
             const newItem = {
                 id: generateUniqueId(),
                 date: date,
