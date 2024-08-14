@@ -1,4 +1,4 @@
-import { SHARED_FILE_URL } from './shared.js';
+import { fetchSchedule, saveSchedule } from './shared.js';
 
 class BackgroundManager {
     constructor() {
@@ -14,33 +14,52 @@ class BackgroundManager {
 
     async loadSchedule() {
         try {
-            const response = await fetch(SHARED_FILE_URL);
-            this.schedule = await response.json();
+            const fetchedSchedule = await fetchSchedule();
+            this.schedule = Array.isArray(fetchedSchedule) ? fetchedSchedule : [];
         } catch (error) {
             console.error('Error loading schedule:', error);
+            this.schedule = [];
         }
     }
 
     setupAlarms() {
         chrome.alarms.create('checkSchedule', { periodInMinutes: 1 });
+        chrome.alarms.create('syncSchedule', { periodInMinutes: 5 });
     }
 
     setupListeners() {
         chrome.alarms.onAlarm.addListener(this.handleAlarm.bind(this));
+        chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
     }
 
     async handleAlarm(alarm) {
         if (alarm.name === 'checkSchedule') {
             await this.checkSchedule();
+        } else if (alarm.name === 'syncSchedule') {
+            await this.syncSchedule();
+        }
+    }
+
+    async handleMessage(message, sender, sendResponse) {
+        if (message.type === 'scheduleUpdated') {
+            await this.loadSchedule();
+            sendResponse({ success: true });
         }
     }
 
     async checkSchedule() {
+        if (!Array.isArray(this.schedule)) {
+            console.error('Schedule is not an array:', this.schedule);
+            return;
+        }
+
         const now = new Date();
         for (const item of this.schedule) {
-            const scheduleTime = new Date(item.date + 'T' + item.time);
-            if (this.shouldSwitchTab(now, scheduleTime, item.recurring)) {
-                await this.switchTab(item);
+            if (item && item.date && item.time) {
+                const scheduleTime = new Date(item.date + 'T' + item.time);
+                if (this.shouldSwitchTab(now, scheduleTime, item.recurring)) {
+                    await this.switchTab(item);
+                }
             }
         }
     }

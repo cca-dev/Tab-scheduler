@@ -4,7 +4,7 @@ export async function fetchSchedule() {
     try {
         const response = await fetch(SHARED_FILE_URL);
         if (!response.ok) {
-            throw new Error('Failed to fetch schedule');
+            throw new Error(`Failed to fetch schedule: ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
         return Array.isArray(data) ? data : [];
@@ -17,20 +17,21 @@ export async function fetchSchedule() {
 export async function saveSchedule(schedule) {
     try {
         const response = await fetch(SHARED_FILE_URL, {
-            method: 'PUT',
+            method: 'POST', // Changed from 'PUT' to 'POST'
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(schedule),
         });
         if (!response.ok) {
-            throw new Error('Failed to save schedule');
+            throw new Error(`Failed to save schedule: ${response.status} ${response.statusText}`);
         }
     } catch (error) {
         console.error('Error saving schedule:', error);
         throw error;
     }
 }
+
 
 export function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
