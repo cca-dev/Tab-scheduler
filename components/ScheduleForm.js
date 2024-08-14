@@ -53,8 +53,7 @@ export default class ScheduleForm {
     
             const formData = new FormData(e.target);
             const tabSelectElement = this.container.querySelector('#tabSelect');
-            const selectedTabValue = tabSelectElement.value;
-    
+            const selectedTabValue = tabSelectElement.value;    
             console.log('Selected Tab Value:', selectedTabValue); // Add this line for debugging
     
             if (!selectedTabValue) {
@@ -75,7 +74,7 @@ export default class ScheduleForm {
                 console.error('Invalid tab selection:', selectedTab);
                 return;
             }
-    
+            console.log('Selected Tab FavIcon:', selectedTab.favIconUrl); // Debugging favIconUrl
             const newItem = {
                 id: generateUniqueId(),
                 date: formData.get('date'),
