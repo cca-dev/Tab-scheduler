@@ -1,7 +1,7 @@
 body {
     font-family: Arial, sans-serif;
     padding: 20px;
-    width: 900px; /* Adjust as needed */
+    width: 800px; /* Adjust as needed */
     overflow-y: auto; /* Allow scrolling if needed */
 }
 
@@ -37,4 +37,8 @@ button:hover {
 table {
     width: 100%;
     border-collapse: collapse;
+}
+
+th {
+    text-align:left;
 }
