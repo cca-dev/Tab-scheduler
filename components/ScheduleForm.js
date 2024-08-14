@@ -44,8 +44,6 @@ export default class ScheduleForm {
             option.textContent = tab.title;
             tabSelect.appendChild(option);
         });
-    
-        console.log('Tab Select InnerHTML:', tabSelect.innerHTML); // Add this line for debugging
     }
     
 
@@ -89,8 +87,8 @@ export default class ScheduleForm {
                 reload: formData.get('reload') === 'on',
                 recurring: formData.get('recurringType') === 'recurring'
             };
-            console.log('newItem Values', netItem);
             await callback(newItem);
+            console.log('newItem Values', netItem);
             e.target.reset();
         });
     }   
