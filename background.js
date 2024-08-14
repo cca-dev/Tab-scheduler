@@ -35,8 +35,6 @@ class BackgroundManager {
     async handleAlarm(alarm) {
         if (alarm.name === 'checkSchedule') {
             await this.checkSchedule();
-        } else if (alarm.name === 'syncSchedule') {
-            await this.syncSchedule();
         }
     }
 
