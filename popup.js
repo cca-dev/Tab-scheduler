@@ -112,6 +112,7 @@ class PopupManager {
     }
 
     saveAndSync = debounce(async (schedule) => {
+        console.log('Saving Schedule:', schedule); // Debugging
         try {
             await saveSchedule(schedule);
             this.scheduleTable.render(schedule);
