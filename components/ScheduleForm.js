@@ -9,11 +9,11 @@ export default class ScheduleForm {
     render() {
         this.container.innerHTML = `
             <form id="scheduleForm">
-            <input type="date" id="date" name="date" required>
-            <input type="time" id="time" name="time" required>
+                <input type="date" id="date" name="date" required>
+                <input type="time" id="time" name="time" required>
                 <select id="tabSelect" required></select>
                 <label>
-                    <input type="checkbox" name="reload" id="reload">
+                    <input type="checkbox" id="reload" name="reload" >
                     Reload
                 </label>
                 <label>
@@ -31,23 +31,23 @@ export default class ScheduleForm {
         this.populateTabSelect();
     }
 
-    async populateTabSelect() {
-        const tabSelect = this.container.querySelector('#tabSelect');
-        tabSelect.innerHTML = ''; // Clear existing options if any
-    
-        const tabs = await chrome.tabs.query({});
-        console.log('Tabs:', tabs); // Add this line for debugging
-    
-        tabs.forEach(tab => {
-            const option = document.createElement('option');
-            option.value = JSON.stringify({ id: tab.id, title: tab.title, url: tab.url });
-            option.textContent = tab.title;
-            tabSelect.appendChild(option);
-        });
-    
-        console.log('Tab Select InnerHTML:', tabSelect.innerHTML); // Add this line for debugging
-    }
-    
+async populateTabSelect() {
+    const tabSelect = this.container.querySelector('#tabSelect');
+    tabSelect.innerHTML = ''; // Clear existing options if any
+
+    const tabs = await chrome.tabs.query({});
+    console.log('Tabs:', tabs); // Add this line for debugging
+
+    tabs.forEach(tab => {
+        const option = document.createElement('option');
+        option.value = JSON.stringify({ id: tab.id, title: tab.title, url: tab.url });
+        option.textContent = tab.title;
+        tabSelect.appendChild(option);
+    });
+
+    console.log('Tab Select InnerHTML:', tabSelect.innerHTML); // Add this line for debugging
+}
+
     
 
     onSubmit(callback) {
@@ -55,34 +55,47 @@ export default class ScheduleForm {
             e.preventDefault();
     
             const formData = new FormData(e.target);
+            const tabSelectElement = this.container.querySelector('#tabSelect');
+            const selectedTabValue = tabSelectElement.value;
     
-            const date = formData.get('date');
-            const time = formData.get('time');
-            const reload = formData.get('reload'); // This is a string, either 'on' or null
-
-            console.log('Date:', date);
-            console.log('Time:', time);
-            console.log('Reload:', reload);
+            console.log('Selected Tab Value:', selectedTabValue); // Add this line for debugging
     
-            if (!date || !time) {
-                console.error('Date or time is missing');
+            if (!selectedTabValue) {
+                console.error('No tab selected');
+                return;
+            }
+            
+            let selectedTab;
+            try {
+                selectedTab = JSON.parse(selectedTabValue);
+                console.log('Parsed Selected Tab:', selectedTab); // Add this line for debugging
+            } catch (error) {
+                console.error('Error parsing selected tab:', error);
+                return;
+            }
+    
+            if (!selectedTab || !selectedTab.id) {
+                console.error('Invalid tab selection:', selectedTab);
                 return;
             }
     
             const newItem = {
                 id: generateUniqueId(),
-                date: date,
-                time: time,
+                date: formData.get('date'),
+                time: formData.get('time'),
                 tabId: selectedTab.id,
                 tabName: selectedTab.title,
                 url: selectedTab.url,
                 favicon: selectedTab.favIconUrl || 'default_favicon.png',
-                reload: reload === 'on', // Converts to boolean
+                reload: formData.get('reload') === 'on',
                 recurring: formData.get('recurringType') === 'recurring'
             };
     
             await callback(newItem);
             e.target.reset();
         });
-    }     
+    }
+    
+    
+
 }
