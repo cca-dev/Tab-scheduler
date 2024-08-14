@@ -31,37 +31,60 @@ export default class ScheduleForm {
         this.populateTabSelect();
     }
 
-async populateTabSelect() {
-    const tabSelect = this.container.querySelector('#tabSelect');
-    const tabs = await chrome.tabs.query({});
-    tabs.forEach(tab => {
-        const option = document.createElement('option');
-        option.value = JSON.stringify({ id: tab.id, title: tab.title, url: tab.url });
-        option.textContent = tab.title;
-        tabSelect.appendChild(option);
-    });
-}
+    async populateTabSelect() {
+        const tabSelect = this.container.querySelector('#tabSelect');
+        const tabs = await chrome.tabs.query({});
+        tabSelect.innerHTML = ''; // Clear existing options if any
+        tabs.forEach(tab => {
+            const option = document.createElement('option');
+            option.value = JSON.stringify({ id: tab.id, title: tab.title, url: tab.url });
+            option.textContent = tab.title;
+            tabSelect.appendChild(option);
+        });
+    }
+    
 
-onSubmit(callback) {
-    this.container.querySelector('#scheduleForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const selectedTab = JSON.parse(formData.get('tabSelect'));
-
-        const newItem = {
-            id: generateUniqueId(),
-            date: formData.get('date'),
-            time: formData.get('time'),
-            tabId: selectedTab.id,
-            tabName: selectedTab.title,
-            url: selectedTab.url,
-            favicon: selectedTab.favIconUrl || 'default_favicon.png', // Use default favicon if missing
-            reload: formData.get('reload') === 'on',
-            recurring: formData.get('recurringType') === 'recurring'
-        };        
-        await callback(newItem);
-        e.target.reset();
-    });
-}
+    onSubmit(callback) {
+        this.container.querySelector('#scheduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const selectedTabValue = formData.get('tabSelect');
+            
+            if (!selectedTabValue) {
+                console.error('No tab selected');
+                return;
+            }
+            
+            let selectedTab;
+            try {
+                selectedTab = JSON.parse(selectedTabValue);
+            } catch (error) {
+                console.error('Error parsing selected tab:', error);
+                return;
+            }
+    
+            if (!selectedTab || !selectedTab.id) {
+                console.error('Invalid tab selection:', selectedTab);
+                return;
+            }
+    
+            const newItem = {
+                id: generateUniqueId(),
+                date: formData.get('date'),
+                time: formData.get('time'),
+                tabId: selectedTab.id,
+                tabName: selectedTab.title,
+                url: selectedTab.url,
+                favicon: selectedTab.favIconUrl || 'default_favicon.png',
+                reload: formData.get('reload') === 'on',
+                recurring: formData.get('recurringType') === 'recurring'
+            };
+    
+            await callback(newItem);
+            e.target.reset();
+        });
+    }
+    
 
 }
