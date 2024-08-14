@@ -88,7 +88,7 @@ export default class ScheduleForm {
                 recurring: formData.get('recurringType') === 'recurring'
             };
             await callback(newItem);
-            console.log('newItem Values', netItem);
+            console.log('newItem Values', newItem);
             e.target.reset();
         });
     }   
