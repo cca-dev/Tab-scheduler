@@ -67,31 +67,42 @@ class PopupManager {
         const itemToEdit = schedule.find(item => item.id === itemId);
         
         if (itemToEdit) {
-            // Query the current tabs to find the one that matches the item's URL
-            const tabs = await chrome.tabs.query({});
-            const matchingTab = tabs.find(tab => tab.url === itemToEdit.url);
-    
             // Populate the form with the item details for editing
             document.querySelector('#date').value = itemToEdit.date;
             document.querySelector('#time').value = itemToEdit.time;
     
-            // If a matching tab is found, populate the dropdown with the tab info
+            // Query the current tabs to find one that matches the item's URL
+            const tabs = await chrome.tabs.query({});
+            const matchingTab = tabs.find(tab => tab.url === itemToEdit.url);
+            
+            let tabSelect = document.querySelector('#tabSelect');
+    
+            // Check if the matching tab is already in the dropdown; if not, add it
             if (matchingTab) {
-                document.querySelector('#tabSelect').value = JSON.stringify({ url: matchingTab.url, title: matchingTab.title });
+                const matchingOption = Array.from(tabSelect.options).find(option => JSON.parse(option.value).url === matchingTab.url);
+                if (matchingOption) {
+                    matchingOption.selected = true;
+                } else {
+                    const newOption = new Option(matchingTab.title, JSON.stringify({ url: matchingTab.url, title: matchingTab.title }));
+                    tabSelect.add(newOption);
+                    tabSelect.value = newOption.value;
+                }
             } else {
-                // If no matching tab is found, still populate the URL and title
-                document.querySelector('#tabSelect').value = JSON.stringify({ url: itemToEdit.url, title: itemToEdit.tabName });
+                // If no matching tab is found (e.g., tab is closed), add a placeholder option
+                const placeholderOption = new Option(itemToEdit.tabName, JSON.stringify({ url: itemToEdit.url, title: itemToEdit.tabName }));
+                tabSelect.add(placeholderOption);
+                tabSelect.value = placeholderOption.value;
             }
     
             document.querySelector('#reload').checked = itemToEdit.reload;
             document.querySelector(`input[name="recurringType"][value="${itemToEdit.recurring ? 'recurring' : 'oneOff'}"]`).checked = true;
     
-            // Remove the old item from the schedule
+            // Remove the old item from the schedule so that it can be replaced with the updated item
             const newSchedule = schedule.filter(item => item.id !== itemId);
             await saveSchedule(newSchedule);
             this.scheduleTable.render(newSchedule);
         }
-    }
+    } 
     
 
     async handleDeleteItem(itemId) {
