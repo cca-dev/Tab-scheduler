@@ -24,7 +24,6 @@ class BackgroundManager {
 
     setupAlarms() {
         chrome.alarms.create('checkSchedule', { periodInMinutes: 1 });
-        chrome.alarms.create('syncSchedule', { periodInMinutes: 5 });
     }
 
     setupListeners() {
@@ -76,19 +75,32 @@ class BackgroundManager {
     async switchTab(item) {
         try {
             const tabs = await chrome.tabs.query({});
-            const tab = tabs.find(tab => tab.id === item.tabId);
+            let tab = tabs.find(tab => tab.id === item.tabId);
+    
+            // If the tab is not found, look for a tab with the same URL
+            if (!tab) {
+                tab = tabs.find(t => t.url === item.url);
+            }
+    
+            // If still no tab, open a new one with the same URL
+            if (!tab) {
+                tab = await chrome.tabs.create({ url: item.url });
+            }
+    
+            // Now activate the tab and reload if required
             if (tab) {
                 await chrome.tabs.update(tab.id, { active: true });
                 if (item.reload) {
                     await chrome.tabs.reload(tab.id);
                 }
             } else {
-                console.warn(`Tab not found: ${item.tabId}`);
+                console.warn(`Tab not found and could not be reopened: ${item.tabId} - ${item.url}`);
             }
         } catch (error) {
             console.error('Error switching tab:', error);
         }
     }
+    
 }
 
 new BackgroundManager();
