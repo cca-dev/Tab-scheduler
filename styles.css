@@ -1,7 +1,7 @@
 body {
     font-family: Arial, sans-serif;
     padding: 20px;
-    width: 800px; /* Adjust as needed */
+    width: 700px; /* Adjust as needed */
     overflow-y: auto; /* Allow scrolling if needed */
 }
 
