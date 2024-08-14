@@ -1,10 +1,10 @@
 body {
     font-family: Arial, sans-serif;
-    width: 400px;
     padding: 20px;
-    width: 800px; /* Adjust as needed */
-    height: 600px; /* Adjust as needed */
+    width: 900px; /* Adjust as needed */
     overflow-y: auto; /* Allow scrolling if needed */
+}
+
 }
 
 h1 {
