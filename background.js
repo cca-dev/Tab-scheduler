@@ -49,18 +49,30 @@ class BackgroundManager {
             console.error('Schedule is not an array:', this.schedule);
             return;
         }
-
+    
         const now = new Date();
+        const tabs = await chrome.tabs.query({});
+    
         for (const item of this.schedule) {
             if (item && item.date && item.time) {
                 const scheduleTime = new Date(item.date + 'T' + item.time);
+    
                 if (this.shouldSwitchTab(now, scheduleTime, item.recurring)) {
-                    await this.switchTab(item);
+                    // Check if the URL is present among the current tabs
+                    let tab = tabs.find(t => t.url === item.url);
+    
+                    // If the tab is not found, create it
+                    if (!tab) {
+                        tab = await chrome.tabs.create({ url: item.url });
+                    }
+    
+                    // Switch to the tab
+                    await this.switchTab(tab, item.reload);
                 }
             }
         }
     }
-
+    
     shouldSwitchTab(now, scheduleTime, recurring) {
         if (recurring) {
             return now.getDay() === scheduleTime.getDay() &&
@@ -72,35 +84,19 @@ class BackgroundManager {
         }
     }
 
-    async switchTab(item) {
+    async switchTab(tab, reload) {
         try {
-            const tabs = await chrome.tabs.query({});
-            let tab = tabs.find(tab => tab.id === item.tabId);
-    
-            // If the tab is not found, look for a tab with the same URL
-            if (!tab) {
-                tab = tabs.find(t => t.url === item.url);
-            }
-    
-            // If still no tab, open a new one with the same URL
-            if (!tab) {
-                tab = await chrome.tabs.create({ url: item.url });
-            }
-    
-            // Now activate the tab and reload if required
-            if (tab) {
-                await chrome.tabs.update(tab.id, { active: true });
-                if (item.reload) {
-                    await chrome.tabs.reload(tab.id);
-                }
-            } else {
-                console.warn(`Tab not found and could not be reopened: ${item.tabId} - ${item.url}`);
+            // Activate the tab
+            await chrome.tabs.update(tab.id, { active: true });
+
+            // Reload the tab if needed
+            if (reload) {
+                await chrome.tabs.reload(tab.id);
             }
         } catch (error) {
             console.error('Error switching tab:', error);
         }
     }
-    
 }
 
 new BackgroundManager();

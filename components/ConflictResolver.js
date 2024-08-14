@@ -30,10 +30,13 @@ export default class ConflictResolver {
         }
         document.querySelector('.dialog').remove();
     }
-    
 
     async removeMissingTabs(missingTabs) {
-        // Implement logic to remove missing tabs from the schedule
+        // Remove the missing tabs from the schedule
+        const schedule = await fetchSchedule();
+        const newSchedule = schedule.filter(item => !missingTabs.some(missingTab => missingTab.url === item.url));
+        await saveSchedule(newSchedule);
+        chrome.runtime.sendMessage({ type: 'scheduleUpdated', schedule: newSchedule });
         document.querySelector('.dialog').remove();
     }
 }

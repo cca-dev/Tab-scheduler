@@ -49,7 +49,7 @@ class PopupManager {
 
     async checkForMissingTabs(schedule) {
         const tabs = await chrome.tabs.query({});
-        const missingTabs = schedule.filter(item => !tabs.some(tab => tab.id === item.tabId));
+        const missingTabs = schedule.filter(item => !tabs.some(tab => tab.url === item.url));
         if (missingTabs.length > 0) {
             this.conflictResolver.showMissingTabsDialog(missingTabs);
         }
@@ -69,17 +69,16 @@ class PopupManager {
             // Populate the form with the item details for editing
             document.querySelector('#date').value = itemToEdit.date;
             document.querySelector('#time').value = itemToEdit.time;
-            document.querySelector('#tabSelect').value = JSON.stringify({ id: itemToEdit.tabId, title: itemToEdit.tabName, url: itemToEdit.url });
+            document.querySelector('#tabSelect').value = JSON.stringify({ url: itemToEdit.url, title: itemToEdit.tabName });
             document.querySelector('#reload').checked = itemToEdit.reload;
             document.querySelector(`input[name="recurringType"][value="${itemToEdit.recurring ? 'recurring' : 'oneOff'}"]`).checked = true;
-    
+
             // Remove the old item from the schedule
             const newSchedule = schedule.filter(item => item.id !== itemId);
             await saveSchedule(newSchedule);
             this.scheduleTable.render(newSchedule);
         }
     }
-    
 
     async handleDeleteItem(itemId) {
         const schedule = await fetchSchedule();
@@ -91,7 +90,7 @@ class PopupManager {
         try {
             await saveSchedule(schedule);
             this.scheduleTable.render(schedule);
-            chrome.runtime.sendMessage({ type: 'scheduleUpdated' });
+            chrome.runtime.sendMessage({ type: 'scheduleUpdated', schedule });
         } catch (error) {
             console.error('Error saving schedule:', error);
             // Implement error handling (e.g., show an error message to the user)
