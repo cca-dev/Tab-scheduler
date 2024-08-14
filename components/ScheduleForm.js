@@ -1,4 +1,4 @@
-import {generateUniqueId} from './shared.js';
+import {generateUniqueId} from '../shared.js';
 
 export default class ScheduleForm {
     constructor(container) {
