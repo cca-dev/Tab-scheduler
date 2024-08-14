@@ -59,6 +59,7 @@ class PopupManager {
         newItem.id = generateUniqueId();
         const schedule = await fetchSchedule();
         schedule.push(newItem);
+        console.log('handleFormSubmit Stage:', schedule);
         await this.saveAndSync(schedule);
     }
 
@@ -118,7 +119,7 @@ class PopupManager {
             this.scheduleTable.render(schedule);
             chrome.runtime.sendMessage({ type: 'scheduleUpdated', schedule });
         } catch (error) {
-            console.error('Error saving schedule:', error);
+            console.error('saveAndSync Stage:', error);
             // Implement error handling (e.g., show an error message to the user)
         }
     }, 1000);
