@@ -4,6 +4,11 @@ export default class ScheduleTable {
     }
 
     render(schedule) {
+        if (!Array.isArray(schedule)) {
+            console.error('Invalid schedule data:', schedule);
+            schedule = [];
+        }
+
         this.container.innerHTML = `
             <table>
                 <thead>
@@ -29,10 +34,10 @@ export default class ScheduleTable {
     renderRow(item) {
         return `
             <tr data-id="${item.id}">
-                <td><img src="${item.favicon}" alt="Favicon" width="16" height="16"></td>
-                <td>${item.tabName}</td>
-                <td>${item.date}</td>
-                <td>${item.time}</td>
+                <td><img src="${item.favicon || ''}" alt="Favicon" width="16" height="16"></td>
+                <td>${item.tabName || 'Unknown'}</td>
+                <td>${item.date || 'N/A'}</td>
+                <td>${item.time || 'N/A'}</td>
                 <td>${item.recurring ? 'Recurring' : 'One-off'}</td>
                 <td><input type="checkbox" ${item.reload ? 'checked' : ''} disabled></td>
                 <td>

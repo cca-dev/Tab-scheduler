@@ -6,7 +6,8 @@ export async function fetchSchedule() {
         if (!response.ok) {
             throw new Error('Failed to fetch schedule');
         }
-        return await response.json();
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
     } catch (error) {
         console.error('Error fetching schedule:', error);
         return [];

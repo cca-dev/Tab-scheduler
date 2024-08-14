@@ -12,15 +12,25 @@ class PopupManager {
     }
 
     async init() {
-        await this.loadSchedule();
-        this.setupEventListeners();
-        this.setupMessageListener();
+        try {
+            await this.loadSchedule();
+            this.setupEventListeners();
+            this.setupMessageListener();
+        } catch (error) {
+            console.error('Error initializing PopupManager:', error);
+            // Optionally, display an error message to the user
+        }
     }
 
     async loadSchedule() {
-        const schedule = await fetchSchedule();
-        this.scheduleTable.render(schedule);
-        await this.checkForMissingTabs(schedule);
+        try {
+            const schedule = await fetchSchedule();
+            this.scheduleTable.render(schedule);
+            await this.checkForMissingTabs(schedule);
+        } catch (error) {
+            console.error('Error loading schedule:', error);
+            this.scheduleTable.render([]); // Render an empty table if there's an error
+        }
     }
 
     setupEventListeners() {
