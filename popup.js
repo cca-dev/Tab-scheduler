@@ -62,14 +62,24 @@ class PopupManager {
         await this.saveAndSync(schedule);
     }
 
-    async handleEditItem(editedItem) {
+    async handleEditItem(itemId) {
         const schedule = await fetchSchedule();
-        const index = schedule.findIndex(item => item.id === editedItem.id);
-        if (index !== -1) {
-            schedule[index] = editedItem;
-            await this.saveAndSync(schedule);
+        const itemToEdit = schedule.find(item => item.id === itemId);
+        if (itemToEdit) {
+            // Populate the form with the item details for editing
+            document.querySelector('#date').value = itemToEdit.date;
+            document.querySelector('#time').value = itemToEdit.time;
+            document.querySelector('#tabSelect').value = JSON.stringify({ id: itemToEdit.tabId, title: itemToEdit.tabName, url: itemToEdit.url });
+            document.querySelector('#reload').checked = itemToEdit.reload;
+            document.querySelector(`input[name="recurringType"][value="${itemToEdit.recurring ? 'recurring' : 'oneOff'}"]`).checked = true;
+    
+            // Remove the old item from the schedule
+            const newSchedule = schedule.filter(item => item.id !== itemId);
+            await saveSchedule(newSchedule);
+            this.scheduleTable.render(newSchedule);
         }
     }
+    
 
     async handleDeleteItem(itemId) {
         const schedule = await fetchSchedule();
