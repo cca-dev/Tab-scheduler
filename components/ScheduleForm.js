@@ -33,24 +33,33 @@ export default class ScheduleForm {
 
     async populateTabSelect() {
         const tabSelect = this.container.querySelector('#tabSelect');
-        const tabs = await chrome.tabs.query({});
         tabSelect.innerHTML = ''; // Clear existing options if any
+    
+        const tabs = await chrome.tabs.query({});
+        console.log('Tabs:', tabs); // Add this line for debugging
+    
         tabs.forEach(tab => {
             const option = document.createElement('option');
             option.value = JSON.stringify({ id: tab.id, title: tab.title, url: tab.url });
             option.textContent = tab.title;
             tabSelect.appendChild(option);
         });
+    
+        console.log('Tab Select InnerHTML:', tabSelect.innerHTML); // Add this line for debugging
     }
+    
     
 
     onSubmit(callback) {
         this.container.querySelector('#scheduleForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+    
             const formData = new FormData(e.target);
-            const selectedTabValue = formData.get('tabSelect');
-            
+            const tabSelectElement = this.container.querySelector('#tabSelect');
+            const selectedTabValue = tabSelectElement.value;
+    
+            console.log('Selected Tab Value:', selectedTabValue); // Add this line for debugging
+    
             if (!selectedTabValue) {
                 console.error('No tab selected');
                 return;
@@ -59,6 +68,7 @@ export default class ScheduleForm {
             let selectedTab;
             try {
                 selectedTab = JSON.parse(selectedTabValue);
+                console.log('Parsed Selected Tab:', selectedTab); // Add this line for debugging
             } catch (error) {
                 console.error('Error parsing selected tab:', error);
                 return;
@@ -85,6 +95,7 @@ export default class ScheduleForm {
             e.target.reset();
         });
     }
+    
     
 
 }
