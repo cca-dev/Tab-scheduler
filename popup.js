@@ -65,20 +65,34 @@ class PopupManager {
     async handleEditItem(itemId) {
         const schedule = await fetchSchedule();
         const itemToEdit = schedule.find(item => item.id === itemId);
+        
         if (itemToEdit) {
+            // Query the current tabs to find the one that matches the item's URL
+            const tabs = await chrome.tabs.query({});
+            const matchingTab = tabs.find(tab => tab.url === itemToEdit.url);
+    
             // Populate the form with the item details for editing
             document.querySelector('#date').value = itemToEdit.date;
             document.querySelector('#time').value = itemToEdit.time;
-            document.querySelector('#tabSelect').value = JSON.stringify({ url: itemToEdit.url, title: itemToEdit.tabName });
+    
+            // If a matching tab is found, populate the dropdown with the tab info
+            if (matchingTab) {
+                document.querySelector('#tabSelect').value = JSON.stringify({ url: matchingTab.url, title: matchingTab.title });
+            } else {
+                // If no matching tab is found, still populate the URL and title
+                document.querySelector('#tabSelect').value = JSON.stringify({ url: itemToEdit.url, title: itemToEdit.tabName });
+            }
+    
             document.querySelector('#reload').checked = itemToEdit.reload;
             document.querySelector(`input[name="recurringType"][value="${itemToEdit.recurring ? 'recurring' : 'oneOff'}"]`).checked = true;
-
+    
             // Remove the old item from the schedule
             const newSchedule = schedule.filter(item => item.id !== itemId);
             await saveSchedule(newSchedule);
             this.scheduleTable.render(newSchedule);
         }
     }
+    
 
     async handleDeleteItem(itemId) {
         const schedule = await fetchSchedule();
