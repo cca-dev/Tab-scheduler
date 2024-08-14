@@ -31,22 +31,23 @@ export default class ScheduleForm {
         this.populateTabSelect();
     }
 
-async populateTabSelect() {
-    const tabSelect = this.container.querySelector('#tabSelect');
-    tabSelect.innerHTML = ''; // Clear existing options if any
-
-    const tabs = await chrome.tabs.query({});
-    console.log('Tabs:', tabs); // Add this line for debugging
-
-    tabs.forEach(tab => {
-        const option = document.createElement('option');
-        option.value = JSON.stringify({ id: tab.id, title: tab.title, url: tab.url });
-        option.textContent = tab.title;
-        tabSelect.appendChild(option);
-    });
-
-    console.log('Tab Select InnerHTML:', tabSelect.innerHTML); // Add this line for debugging
-}
+    async populateTabSelect() {
+        const tabSelect = this.container.querySelector('#tabSelect');
+        tabSelect.innerHTML = ''; // Clear existing options if any
+    
+        const tabs = await chrome.tabs.query({});
+        console.log('Tabs:', tabs); // Add this line for debugging
+    
+        tabs.forEach(tab => {
+            const option = document.createElement('option');
+            option.value = JSON.stringify({ id: tab.id, title: tab.title, url: tab.url, favicon: tab.favIconUrl });
+            option.textContent = tab.title;
+            tabSelect.appendChild(option);
+        });
+    
+        console.log('Tab Select InnerHTML:', tabSelect.innerHTML); // Add this line for debugging
+    }
+    
 
    onSubmit(callback) {
         this.container.querySelector('#scheduleForm').addEventListener('submit', async (e) => {
