@@ -9,11 +9,11 @@ export default class ScheduleForm {
     render() {
         this.container.innerHTML = `
             <form id="scheduleForm">
-                <input type="date" id="date" required>
-                <input type="time" id="time" required>
+            <input type="date" id="date" name="date" required>
+            <input type="time" id="time" name="time" required>
                 <select id="tabSelect" required></select>
                 <label>
-                    <input type="checkbox" id="reload">
+                    <input type="checkbox" name="reload" id="reload">
                     Reload
                 </label>
                 <label>
@@ -55,47 +55,33 @@ export default class ScheduleForm {
             e.preventDefault();
     
             const formData = new FormData(e.target);
-            const tabSelectElement = this.container.querySelector('#tabSelect');
-            const selectedTabValue = tabSelectElement.value;
     
-            console.log('Selected Tab Value:', selectedTabValue); // Add this line for debugging
+            const date = formData.get('date');
+            const time = formData.get('time');
+            const reload = formData.get('reload'); // This is a string, either 'on' or null
+
+            console.log('Date:', date);
+            console.log('Time:', time);
+            console.log('Reload:', reload);
     
-            if (!selectedTabValue) {
-                console.error('No tab selected');
+            if (!date || !time) {
+                console.error('Date or time is missing');
                 return;
-            }
-            
-            let selectedTab;
-            try {
-                selectedTab = JSON.parse(selectedTabValue);
-                console.log('Parsed Selected Tab:', selectedTab); // Add this line for debugging
-            } catch (error) {
-                console.error('Error parsing selected tab:', error);
-                return;
-            }
-    
-            if (!selectedTab || !selectedTab.id) {
-                console.error('Invalid tab selection:', selectedTab);
-                return;
-            }
-    
+            }    
             const newItem = {
                 id: generateUniqueId(),
-                date: formData.get('date'),
-                time: formData.get('time'),
+                date: date,
+                time: time,
                 tabId: selectedTab.id,
                 tabName: selectedTab.title,
                 url: selectedTab.url,
                 favicon: selectedTab.favIconUrl || 'default_favicon.png',
-                reload: formData.get('reload') === 'on',
+                reload: reload === 'on', // Converts to boolean
                 recurring: formData.get('recurringType') === 'recurring'
             };
     
             await callback(newItem);
             e.target.reset();
         });
-    }
-    
-    
-
+    }     
 }
