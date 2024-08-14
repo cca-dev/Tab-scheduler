@@ -48,9 +48,7 @@ async populateTabSelect() {
     console.log('Tab Select InnerHTML:', tabSelect.innerHTML); // Add this line for debugging
 }
 
-    
-
-    onSubmit(callback) {
+   onSubmit(callback) {
         this.container.querySelector('#scheduleForm').addEventListener('submit', async (e) => {
             e.preventDefault();
     
@@ -94,8 +92,6 @@ async populateTabSelect() {
             await callback(newItem);
             e.target.reset();
         });
-    }
-    
-    
+    }   
 
 }
