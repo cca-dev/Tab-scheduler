@@ -2,7 +2,7 @@ export const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
 export async function fetchSchedule() {
     try {
-        const response = await fetch(SHARED_FILE_URL);
+        const response = await fetch(SHARED_FILE_URL + '?timestamp=' + new Date().getTime());
         if (!response.ok) {
             throw new Error(`Failed to fetch schedule: ${response.status} ${response.statusText}`);
         }
@@ -13,6 +13,7 @@ export async function fetchSchedule() {
         return [];
     }
 }
+
 
 export async function saveSchedule(schedule) {
     try {
