@@ -35,8 +35,7 @@ export default class ScheduleForm {
         const tabSelect = this.container.querySelector('#tabSelect');
         tabSelect.innerHTML = ''; // Clear existing options if any
     
-        const tabs = await chrome.tabs.query({});
-        console.log('Tabs:', tabs); // Add this line for debugging
+        const tabs = await chrome.tabs.query({});       
     
         tabs.forEach(tab => {
             const option = document.createElement('option');
@@ -54,8 +53,7 @@ export default class ScheduleForm {
             const formData = new FormData(e.target);
             const tabSelectElement = this.container.querySelector('#tabSelect');
             const selectedTabValue = tabSelectElement.value;    
-            console.log('Selected Tab Value:', selectedTabValue); // Add this line for debugging
-    
+                
             if (!selectedTabValue) {
                 console.error('No tab selected');
                 return;
@@ -64,7 +62,6 @@ export default class ScheduleForm {
             let selectedTab;
             try {
                 selectedTab = JSON.parse(selectedTabValue);
-                console.log('Parsed Selected Tab:', selectedTab); // Add this line for debugging
             } catch (error) {
                 console.error('Error parsing selected tab:', error);
                 return;
@@ -74,7 +71,7 @@ export default class ScheduleForm {
                 console.error('Invalid tab selection:', selectedTab);
                 return;
             }
-            console.log('Selected Tab FavIcon:', selectedTab.favIconUrl); // Debugging favIconUrl
+            
             const newItem = {
                 id: generateUniqueId(),
                 date: formData.get('date'),
@@ -87,7 +84,7 @@ export default class ScheduleForm {
                 recurring: formData.get('recurringType') === 'recurring'
             };
             await callback(newItem);
-            console.log('newItem Values', newItem);
+            
             e.target.reset();
         });
     }   

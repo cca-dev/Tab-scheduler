@@ -7,6 +7,7 @@ class BackgroundManager {
     }
 
     async init() {
+        console.log("Initializing Background Manager");
         await this.loadSchedule();
         this.setupAlarms();
         this.setupListeners();
@@ -16,6 +17,7 @@ class BackgroundManager {
         try {
             const fetchedSchedule = await fetchSchedule();
             this.schedule = Array.isArray(fetchedSchedule) ? fetchedSchedule : [];
+            console.log("Schedule Loaded:", this.schedule);
         } catch (error) {
             console.error('Error loading schedule:', error);
             this.schedule = [];
@@ -23,18 +25,21 @@ class BackgroundManager {
     }
 
     setupAlarms() {
+        console.log("Setting up alarms");
         chrome.alarms.clearAll(() => {
             chrome.alarms.create('checkSchedule', { periodInMinutes: 1 });
+            console.log("Alarm created for checkSchedule");
         });
     }
 
     setupListeners() {
+        console.log("Setting up listeners");
         chrome.alarms.onAlarm.addListener(this.handleAlarm.bind(this));
         chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
 
-        // Listen for changes in storage to update the schedule
         chrome.storage.onChanged.addListener(async (changes, area) => {
             if (area === 'sync' && changes.schedule) {
+                console.log("Storage change detected, reloading schedule");
                 await this.loadSchedule();
                 this.setupAlarms();
             }
@@ -43,19 +48,22 @@ class BackgroundManager {
 
     async handleAlarm(alarm) {
         if (alarm.name === 'checkSchedule') {
+            console.log("Alarm triggered: checkSchedule");
             await this.checkSchedule();
         }
     }
 
     async handleMessage(message, sender, sendResponse) {
         if (message.type === 'scheduleUpdated') {
+            console.log("Schedule update received via message");
             await this.loadSchedule();
-            this.setupAlarms();  // Re-setup alarms on all devices
+            this.setupAlarms();
             sendResponse({ success: true });
         }
     }
 
     async checkSchedule() {
+        console.log("Checking schedule...");
         if (!Array.isArray(this.schedule)) {
             console.error('Schedule is not an array:', this.schedule);
             return;
@@ -63,16 +71,21 @@ class BackgroundManager {
     
         const now = new Date();
         const tabs = await chrome.tabs.query({});
+        console.log("Current tabs:", tabs);
     
         for (const item of this.schedule) {
             if (item && item.date && item.time) {
                 const scheduleTime = new Date(item.date + 'T' + item.time);
+                console.log(`Checking item scheduled for ${scheduleTime}`);
     
                 if (this.shouldSwitchTab(now, scheduleTime, item.recurring)) {
                     let tab = tabs.find(t => t.url === item.url);
     
                     if (!tab) {
+                        console.log(`Tab not found for URL ${item.url}, creating new tab`);
                         tab = await chrome.tabs.create({ url: item.url });
+                    } else {
+                        console.log(`Found tab for URL ${item.url}`);
                     }
     
                     await this.switchTab(tab, item.reload);
@@ -94,8 +107,11 @@ class BackgroundManager {
 
     async switchTab(tab, reload) {
         try {
+            console.log(`Switching to tab: ${tab.id}`);
             await chrome.tabs.update(tab.id, { active: true });
+
             if (reload) {
+                console.log(`Reloading tab: ${tab.id}`);
                 await chrome.tabs.reload(tab.id);
             }
         } catch (error) {
