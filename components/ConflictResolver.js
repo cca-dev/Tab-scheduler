@@ -1,3 +1,5 @@
+import { fetchSchedule } from './shared.js';
+
 export default class ConflictResolver {
     showMissingTabsDialog(missingTabs) {
         const dialog = document.createElement('div');
