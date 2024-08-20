@@ -23,12 +23,22 @@ class BackgroundManager {
     }
 
     setupAlarms() {
-        chrome.alarms.create('checkSchedule', { periodInMinutes: 1 });
+        chrome.alarms.clearAll(() => {
+            chrome.alarms.create('checkSchedule', { periodInMinutes: 1 });
+        });
     }
 
     setupListeners() {
         chrome.alarms.onAlarm.addListener(this.handleAlarm.bind(this));
         chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
+
+        // Listen for changes in storage to update the schedule
+        chrome.storage.onChanged.addListener(async (changes, area) => {
+            if (area === 'sync' && changes.schedule) {
+                await this.loadSchedule();
+                this.setupAlarms();
+            }
+        });
     }
 
     async handleAlarm(alarm) {
@@ -40,6 +50,7 @@ class BackgroundManager {
     async handleMessage(message, sender, sendResponse) {
         if (message.type === 'scheduleUpdated') {
             await this.loadSchedule();
+            this.setupAlarms();  // Re-setup alarms on all devices
             sendResponse({ success: true });
         }
     }
@@ -58,15 +69,12 @@ class BackgroundManager {
                 const scheduleTime = new Date(item.date + 'T' + item.time);
     
                 if (this.shouldSwitchTab(now, scheduleTime, item.recurring)) {
-                    // Check if the URL is present among the current tabs
                     let tab = tabs.find(t => t.url === item.url);
     
-                    // If the tab is not found, create it
                     if (!tab) {
                         tab = await chrome.tabs.create({ url: item.url });
                     }
     
-                    // Switch to the tab
                     await this.switchTab(tab, item.reload);
                 }
             }
@@ -86,10 +94,7 @@ class BackgroundManager {
 
     async switchTab(tab, reload) {
         try {
-            // Activate the tab
             await chrome.tabs.update(tab.id, { active: true });
-
-            // Reload the tab if needed
             if (reload) {
                 await chrome.tabs.reload(tab.id);
             }
