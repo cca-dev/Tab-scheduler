@@ -37,13 +37,11 @@ class BackgroundManager {
         chrome.alarms.onAlarm.addListener(this.handleAlarm.bind(this));
         chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
 
-        chrome.storage.onChanged.addListener(async (changes, area) => {
-            if (area === 'sync' && changes.schedule) {
-                console.log("Storage change detected, reloading schedule");
-                await this.loadSchedule();
-                this.setupAlarms();
-            }
-        });
+        // Use a polling mechanism to check for updates in the shared JSON file
+        setInterval(async () => {
+            console.log("Checking for schedule updates...");
+            await this.loadSchedule();
+        }, 30000); // Check every 30 seconds
     }
 
     async handleAlarm(alarm) {
@@ -57,7 +55,6 @@ class BackgroundManager {
         if (message.type === 'scheduleUpdated') {
             console.log("Schedule update received via message");
             await this.loadSchedule();
-            this.setupAlarms();
             sendResponse({ success: true });
         }
     }
