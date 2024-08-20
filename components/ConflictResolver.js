@@ -1,4 +1,4 @@
-import { fetchSchedule } from './shared.js';
+import { fetchSchedule } from '../shared.js';
 
 export default class ConflictResolver {
     showMissingTabsDialog(missingTabs) {
