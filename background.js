@@ -41,7 +41,7 @@ class BackgroundManager {
         setInterval(async () => {
             console.log("Polling for schedule updates...");
             await this.loadSchedule();
-        }, 5000); // Check every 5 seconds
+        }, 2000); // Check every 2 seconds
     }
 
     async handleAlarm(alarm) {
