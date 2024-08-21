@@ -37,11 +37,11 @@ class BackgroundManager {
         chrome.alarms.onAlarm.addListener(this.handleAlarm.bind(this));
         chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
 
-        // Use a polling mechanism to check for updates in the shared JSON file
+        // Polling mechanism to check for updates in the shared JSON file
         setInterval(async () => {
-            console.log("Checking for schedule updates...");
+            console.log("Polling for schedule updates...");
             await this.loadSchedule();
-        }, 5000); // Check every 5 seconds        
+        }, 5000); // Check every 5 seconds
     }
 
     async handleAlarm(alarm) {
@@ -56,6 +56,8 @@ class BackgroundManager {
             console.log("Schedule update received via message");
             await this.loadSchedule();
             sendResponse({ success: true });
+        } else {
+            sendResponse({ success: false, message: "Unknown message type" });
         }
     }
 
@@ -72,7 +74,7 @@ class BackgroundManager {
     
         for (const item of this.schedule) {
             if (item && item.date && item.time) {
-                const scheduleTime = new Date(item.date + 'T' + item.time);
+                const scheduleTime = new Date(`${item.date}T${item.time}`);
                 console.log(`Checking item scheduled for ${scheduleTime}`);
     
                 if (this.shouldSwitchTab(now, scheduleTime, item.recurring)) {
@@ -80,7 +82,12 @@ class BackgroundManager {
     
                     if (!tab) {
                         console.log(`Tab not found for URL ${item.url}, creating new tab`);
-                        tab = await chrome.tabs.create({ url: item.url });
+                        try {
+                            tab = await chrome.tabs.create({ url: item.url });
+                        } catch (error) {
+                            console.error(`Failed to create tab for URL ${item.url}:`, error);
+                            continue; // Skip this item if tab creation fails
+                        }
                     } else {
                         console.log(`Found tab for URL ${item.url}`);
                     }
