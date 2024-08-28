@@ -2,27 +2,26 @@ export const SHARED_FILE_URL = 'https://ccc.local:44300/tab_schedule.json';
 
 export async function fetchSchedule() {
     try {
-        const response = await fetch(SHARED_FILE_URL + '?timestamp=' + new Date().getTime());
+        const response = await fetch(SHARED_FILE_URL);
         if (!response.ok) {
             throw new Error(`Failed to fetch schedule: ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        return data || { schedule: [], autoRefresh: [] };
     } catch (error) {
         console.error('Error fetching schedule:', error);
-        return [];
+        return { schedule: [], autoRefresh: [] };
     }
 }
 
-
-export async function saveSchedule(schedule) {
+export async function saveSchedule(data) {
     try {
         const response = await fetch(SHARED_FILE_URL, {
-            method: 'POST', // Changed from 'PUT' to 'POST'
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(schedule),
+            body: JSON.stringify(data),
         });
         if (!response.ok) {
             throw new Error(`Failed to save schedule: ${response.status} ${response.statusText}`);
@@ -32,7 +31,6 @@ export async function saveSchedule(schedule) {
         throw error;
     }
 }
-
 
 export function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
