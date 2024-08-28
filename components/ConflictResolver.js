@@ -1,6 +1,7 @@
 import { fetchSchedule, saveSchedule } from '../shared.js';
 
 export default class ConflictResolver {
+    
     showMissingTabsDialog(missingTabs) {
         const dialog = document.createElement('div');
         dialog.className = 'dialog';
@@ -41,4 +42,6 @@ export default class ConflictResolver {
         chrome.runtime.sendMessage({ type: 'scheduleUpdated', schedule: newSchedule });
         document.querySelector('.dialog').remove();
     }
+
+    
 }
