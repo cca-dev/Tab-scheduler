@@ -42,4 +42,8 @@ table {
 th {
     text-align:left;
 }
-label {display:block;margin-top:10px;}
+label {display:block;}
+
+#autoRefreshTabs{
+    margin-bottom:10px;
+}
