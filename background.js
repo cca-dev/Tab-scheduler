@@ -3,8 +3,6 @@ import { fetchSchedule, saveSchedule } from './shared.js';
 class BackgroundManager {
     constructor() {
         this.schedule = [];
-        this.autoRefresh = [];
-        this.refreshIntervals = {};
         this.init();
     }
 
@@ -18,15 +16,11 @@ class BackgroundManager {
     async loadSchedule() {
         try {
             const fetchedSchedule = await fetchSchedule();
-            this.schedule = Array.isArray(fetchedSchedule.schedule) ? fetchedSchedule.schedule : [];
-            this.autoRefresh = Array.isArray(fetchedSchedule.autoRefresh) ? fetchedSchedule.autoRefresh : [];
+            this.schedule = Array.isArray(fetchedSchedule) ? fetchedSchedule : [];
             console.log("Schedule Loaded:", this.schedule);
-            console.log("Auto-Refresh Loaded:", this.autoRefresh);
-            this.setupAutoRefresh();
         } catch (error) {
             console.error('Error loading schedule:', error);
             this.schedule = [];
-            this.autoRefresh = [];
         }
     }
 
@@ -73,19 +67,19 @@ class BackgroundManager {
             console.error('Schedule is not an array:', this.schedule);
             return;
         }
-
+    
         const now = new Date();
         const tabs = await chrome.tabs.query({});
         console.log("Current tabs:", tabs);
-
+    
         for (const item of this.schedule) {
             if (item && item.date && item.time) {
                 const scheduleTime = new Date(`${item.date}T${item.time}`);
                 console.log(`Checking item scheduled for ${scheduleTime}`);
-
+    
                 if (this.shouldSwitchTab(now, scheduleTime, item.recurring)) {
                     let tab = tabs.find(t => t.url === item.url);
-
+    
                     if (!tab) {
                         console.log(`Tab not found for URL ${item.url}, creating new tab`);
                         try {
@@ -97,13 +91,13 @@ class BackgroundManager {
                     } else {
                         console.log(`Found tab for URL ${item.url}`);
                     }
-
+    
                     await this.switchTab(tab, item.reload);
                 }
             }
         }
     }
-
+    
     shouldSwitchTab(now, scheduleTime, recurring) {
         if (recurring) {
             return now.getDay() === scheduleTime.getDay() &&
@@ -127,42 +121,6 @@ class BackgroundManager {
         } catch (error) {
             console.error('Error switching tab:', error);
         }
-    }
-
-    setupAutoRefresh() {
-        console.log("Setting up auto-refresh timers");
-
-        // Clear existing intervals
-        for (const intervalId in this.refreshIntervals) {
-            clearInterval(this.refreshIntervals[intervalId]);
-        }
-
-        for (const refreshItem of this.autoRefresh) {
-            // Find the tab
-            chrome.tabs.query({ url: refreshItem.url }, (tabs) => {
-                let tab = tabs[0];
-
-                if (!tab) {
-                    console.log(`Tab not found for URL ${refreshItem.url}, creating new tab`);
-                    chrome.tabs.create({ url: refreshItem.url }, (newTab) => {
-                        tab = newTab;
-                        this.startAutoRefresh(tab.id, refreshItem.interval);
-                    });
-                } else {
-                    this.startAutoRefresh(tab.id, refreshItem.interval);
-                }
-            });
-        }
-    }
-
-    startAutoRefresh(tabId, interval) {
-        console.log(`Setting auto-refresh for tab ${tabId} every ${interval} seconds`);
-
-        // Start interval for refreshing tab
-        this.refreshIntervals[tabId] = setInterval(() => {
-            console.log(`Refreshing tab ${tabId}`);
-            chrome.tabs.reload(tabId);
-        }, interval * 1000);
     }
 }
 

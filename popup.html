@@ -9,24 +9,8 @@
 <body>
     <div id="app">
         <h1>CCA Scheduled Tab Switcher</h1>
-        
-        <!-- Schedule Tabs Section -->
-        <h2>Schedule Tabs</h2>
         <div id="scheduleForm"></div>
         <div id="scheduleTable"></div>
-
-        <!-- Auto-Refresh Tabs Section -->
-        <h2>Auto-Refresh Tabs</h2>
-        <div id="autoRefreshForm">
-            <label for="autoRefreshTabs">Select Tab:</label>
-            <select id="autoRefreshTabs"></select>
-            
-            <label for="refreshInterval">Refresh Interval (seconds):</label>
-            <input type="number" id="refreshInterval" name="refreshInterval" min="1" required>
-            
-            <button id="addRefreshBtn">Add/Update Refresh Timer</button>
-        </div>
-        <div id="refreshTable"></div>
     </div>
     <script type="module" src="popup.js"></script>
 </body>
