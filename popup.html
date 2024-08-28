@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CCA Scheduled Tab Switcher</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
     <div id="app">
         <h1>CCA Scheduled Tab Switcher</h1>
@@ -15,35 +13,5 @@
         <div id="scheduleTable"></div>
     </div>
     <script type="module" src="popup.js"></script>
-
-    <!-- Auto Refresh Management -->
-    <div>
-        <h3>Auto Refresh Tabs</h3>
-        <form id="autoRefreshForm">
-            <label for="autoRefreshTabs">Select Tab:</label>
-            <select id="autoRefreshTabs"></select>
-
-            <label for="refreshInterval">Refresh Interval (seconds):</label>
-            <input type="number" id="refreshInterval" name="refreshInterval" min="1" required>
-
-            <button type="submit">Add/Update Refresh Timer</button>
-        </form>
-
-        <table id="refreshTable">
-            <thead>
-                <tr>
-                    <th>Tab Name</th>
-                    <th>URL</th>
-                    <th>Refresh Interval</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Populated dynamically with JavaScript -->
-            </tbody>
-        </table>
-    </div>
-
 </body>
-
 </html>
