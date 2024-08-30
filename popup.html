@@ -3,70 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schedule Tabs</title>
+    <title>CCA Scheduled Tab Switcher</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Schedule Tabs</h1>
-    <form id="scheduleForm">
-        <!-- Schedule form fields -->
-        <label for="url">URL:</label>
-        <input type="url" id="url" required>
+    <div id="app">
+        <h1>CCA Scheduled Tab Switcher</h1>
+        
+        <!-- Schedule Tabs Section -->
+        <h2>Schedule Tabs</h2>
+        <div id="scheduleForm"></div>
+        <div id="scheduleTable"></div>
 
-        <label for="date">Date:</label>
-        <input type="date" id="date" required>
-
-        <label for="time">Time:</label>
-        <input type="time" id="time" required>
-
-        <label for="recurring">Recurring:</label>
-        <input type="checkbox" id="recurring">
-
-        <label for="reload">Reload:</label>
-        <input type="checkbox" id="reload">
-
-        <button type="submit">Add to Schedule</button>
-    </form>
-
-    <h2>Scheduled Tabs</h2>
-    <table id="scheduleTable">
-        <thead>
-            <tr>
-                <th>URL</th>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Recurring</th>
-                <th>Reload</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
-
-    <h2>Auto-Refresh Tabs</h2>
-    <form id="autoRefreshForm">
-        <label for="refreshUrl">URL:</label>
-        <input type="url" id="refreshUrl" required>
-
-        <label for="interval">Interval (seconds):</label>
-        <input type="number" id="interval" required min="1">
-
-        <button type="submit">Add Auto-Refresh</button>
-    </form>
-
-    <table id="refreshTable">
-        <thead>
-            <tr>
-                <th>URL</th>
-                <th>Interval (seconds)</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
-
+        <!-- Auto-Refresh Tabs Section -->
+        <h2>Auto-Refresh Tabs</h2>
+        <div id="autoRefreshForm"></div>
+        <div id="refreshTable"></div>
+    </div>
     <script type="module" src="popup.js"></script>
 </body>
 </html>
