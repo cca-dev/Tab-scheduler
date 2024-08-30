@@ -1,11 +1,17 @@
-@@ -3,6 +3,8 @@ import { fetchSchedule, saveSchedule } from './shared.js';
+import { fetchSchedule, saveSchedule } from './shared.js';
+
 class BackgroundManager {
     constructor() {
         this.schedule = [];
         this.init();
     }
 
-	@@ -15,12 +17,16 @@ class BackgroundManager {
+    async init() {
+        console.log("Initializing Background Manager");
+        await this.loadSchedule();
+        this.setupAlarms();
+        this.setupListeners();
+    }
 
     async loadSchedule() {
         try {
@@ -18,7 +24,16 @@ class BackgroundManager {
         }
     }
 
-	@@ -37,11 +43,10 @@ class BackgroundManager {
+    setupAlarms() {
+        console.log("Setting up alarms");
+        chrome.alarms.clearAll(() => {
+            chrome.alarms.create('checkSchedule', { periodInMinutes: 1 });
+            console.log("Alarm created for checkSchedule");
+        });
+    }
+
+    setupListeners() {
+        console.log("Setting up listeners");
         chrome.alarms.onAlarm.addListener(this.handleAlarm.bind(this));
         chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
 
@@ -30,7 +45,14 @@ class BackgroundManager {
     }
 
     async handleAlarm(alarm) {
-	@@ -56,8 +61,6 @@ class BackgroundManager {
+        if (alarm.name === 'checkSchedule') {
+            console.log("Alarm triggered: checkSchedule");
+            await this.checkSchedule();
+        }
+    }
+
+    async handleMessage(message, sender, sendResponse) {
+        if (message.type === 'scheduleUpdated') {
             console.log("Schedule update received via message");
             await this.loadSchedule();
             sendResponse({ success: true });
@@ -39,7 +61,9 @@ class BackgroundManager {
         }
     }
 
-	@@ -67,37 +70,32 @@ class BackgroundManager {
+    async checkSchedule() {
+        console.log("Checking schedule...");
+        if (!Array.isArray(this.schedule)) {
             console.error('Schedule is not an array:', this.schedule);
             return;
         }
@@ -77,7 +101,24 @@ class BackgroundManager {
     shouldSwitchTab(now, scheduleTime, recurring) {
         if (recurring) {
             return now.getDay() === scheduleTime.getDay() &&
-	@@ -122,6 +120,42 @@ class BackgroundManager {
+                   now.getHours() === scheduleTime.getHours() &&
+                   now.getMinutes() === scheduleTime.getMinutes();
+        } else {
+            return now.getTime() - scheduleTime.getTime() < 60000 && // Within the last minute
+                   now.getTime() >= scheduleTime.getTime();
+        }
+    }
+
+    async switchTab(tab, reload) {
+        try {
+            console.log(`Switching to tab: ${tab.id}`);
+            await chrome.tabs.update(tab.id, { active: true });
+
+            if (reload) {
+                console.log(`Reloading tab: ${tab.id}`);
+                await chrome.tabs.reload(tab.id);
+            }
+        } catch (error) {
             console.error('Error switching tab:', error);
         }
     }
